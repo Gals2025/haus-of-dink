@@ -10,7 +10,7 @@ export default function ShopPage() {
   return (
     <div className="mx-auto max-w-7xl px-6 py-16 lg:px-10">
       <Badge variant="outline">THE COLLECTION</Badge>
-      <h1 className="mt-5 text-5xl font-semibold tracking-tight">
+      <h1 className="mt-5 text-5xl font-normal tracking-tight">
         Find your next favorite.
       </h1>
       <p className="mt-4 max-w-xl text-muted-foreground">
@@ -22,7 +22,7 @@ export default function ShopPage() {
           className="mx-auto size-12 text-primary"
           strokeWidth={1.5}
         />
-        <h2 className="mt-5 text-2xl font-semibold">
+        <h2 className="mt-5 text-2xl font-normal">
           Our collection is warming up
         </h2>
         <p className="mx-auto mb-7 mt-3 max-w-md text-muted-foreground">
@@ -36,3 +36,4 @@ export default function ShopPage() {
     </div>
   );
 }
+

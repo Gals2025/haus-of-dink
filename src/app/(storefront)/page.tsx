@@ -27,12 +27,12 @@ export default function HomePage() {
           <Badge variant="outline" className="mb-7">
             THE NEXT CHAPTER STARTS HERE
           </Badge>
-          <h1 className="max-w-xl text-6xl font-semibold leading-[1.02] tracking-tighter sm:text-7xl">
+          <h1 className="max-w-xl text-6xl font-normal leading-[1.02] tracking-tighter sm:text-7xl">
             Good gear.
             <br />
             Great games.
             <br />
-            <span className="text-primary">Your haus.</span>
+            <span className="text-primary italic">Your haus.</span>
           </h1>
           <p className="mt-7 max-w-md text-lg leading-relaxed text-muted-foreground">
             Your future home for pickleball paddles and court essentials. Built
@@ -52,13 +52,13 @@ export default function HomePage() {
           aria-hidden="true"
           className="relative flex min-h-96 items-center justify-center overflow-hidden rounded-3xl bg-primary text-primary-foreground sm:min-h-[470px]"
         >
-          <div className="absolute inset-8 rounded-t-full border border-white/25" />
-          <div className="absolute inset-x-0 top-1/2 border-t border-white/25" />
-          <div className="absolute inset-y-0 left-1/2 border-l border-white/25" />
-          <div className="relative -rotate-12 rounded-[45%] border-8 border-primary-foreground/90 bg-primary p-10 shadow-2xl">
+          <div className="absolute inset-8 rounded-t-full border border-primary-foreground/25" />
+          <div className="absolute inset-x-0 top-1/2 border-t border-primary-foreground/25" />
+          <div className="absolute inset-y-0 left-1/2 border-l border-primary-foreground/25" />
+          <div className="relative -rotate-12 rounded-[45%] border-8 border-accent bg-accent text-primary p-10 shadow-2xl">
             <CircleDot className="size-28" strokeWidth={1} />
           </div>
-          <span className="absolute bottom-7 left-7 text-xs tracking-[0.2em]">
+          <span className="absolute bottom-7 left-7 text-xs tracking-[0.2em] text-accent">
             MEET YOU AT THE KITCHEN.
           </span>
           <span className="absolute right-7 top-7 text-sm">HOD / 001</span>
@@ -71,7 +71,7 @@ export default function HomePage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <h2
             id="collections-heading"
-            className="text-3xl font-semibold tracking-tight"
+            className="text-3xl font-normal tracking-tight"
           >
             Court essentials
           </h2>
@@ -88,14 +88,14 @@ export default function HomePage() {
             >
               <Icon
                 aria-hidden="true"
-                className="size-10 shrink-0 text-primary"
+                className="size-12 shrink-0 rounded-full bg-accent p-2.5 text-primary"
                 strokeWidth={1.5}
               />
               <div className="flex-1">
                 <p className="mb-2 text-xs text-muted-foreground">
                   {number} / COMING SOON
                 </p>
-                <h3 className="text-xl font-semibold">{name}</h3>
+                <h3 className="text-xl font-normal">{name}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {description}
                 </p>
@@ -108,3 +108,4 @@ export default function HomePage() {
     </>
   );
 }
+
