@@ -30,7 +30,7 @@ export default function AdminLayout({
             <Link
               href="/admin"
               aria-current="page"
-              className="flex items-center gap-3 rounded-lg bg-primary/10 px-4 py-3 text-sm font-medium text-primary"
+              className="flex items-center gap-3 rounded-lg bg-secondary px-4 py-3 text-sm font-medium text-primary"
             >
               <LayoutDashboard aria-hidden="true" className="size-4" />
               Overview
@@ -51,3 +51,4 @@ export default function AdminLayout({
     </div>
   );
 }
+

@@ -24,7 +24,7 @@ export default function AdminPage() {
         <p className="text-xs font-medium tracking-widest text-primary">
           HAUS OF DINK / WORKSPACE
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+        <h1 className="mt-3 text-4xl font-normal tracking-tight">
           A solid start.
         </h1>
         <p className="mt-3 text-muted-foreground">
@@ -54,7 +54,7 @@ export default function AdminPage() {
         </CardContent>
       </Card>
       <section aria-labelledby="modules-heading">
-        <h2 id="modules-heading" className="mb-4 text-xl font-semibold">
+        <h2 id="modules-heading" className="mb-4 text-xl font-normal">
           On the roadmap
         </h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -75,3 +75,4 @@ export default function AdminPage() {
     </div>
   );
 }
+

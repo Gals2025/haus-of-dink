@@ -1,19 +1,19 @@
 import Link from "next/link";
-import { CircleDot } from "lucide-react";
 
 export function Brand() {
   return (
     <Link
       href="/"
-      className="inline-flex items-center gap-3 font-bold tracking-tight"
+      className="inline-flex flex-col items-start text-primary"
       aria-label="Haus of Dink home"
     >
-      <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-        <CircleDot aria-hidden="true" className="size-5" />
+      <span className="font-serif text-[1.75rem] leading-none tracking-tight">
+        HAUS <span className="text-[0.7em] italic">of</span> DINK
       </span>
-      <span className="text-lg">
-        HAUS OF DINK<span className="ml-1 text-primary">.</span>
+      <span className="mt-2 text-[0.55rem] font-bold tracking-[0.22em]">
+        PICKLEBALL ESSENTIALS
       </span>
     </Link>
   );
 }
+

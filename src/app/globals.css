@@ -14,7 +14,7 @@
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--secondary);
+  --color-accent: var(--accent);
   --color-accent-foreground: var(--foreground);
   --color-destructive: #b42318;
   --color-border: var(--border);
@@ -25,19 +25,25 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: Arial, Helvetica, sans-serif;
+  --font-serif: "Bodoni Moda", Didot, "Bodoni MT", "Times New Roman", serif;
 }
 
 :root {
   color-scheme: light;
-  --background: #faf9f5;
-  --foreground: #182c24;
-  --card: #ffffff;
-  --primary: #235440;
-  --primary-foreground: #ffffff;
-  --secondary: #e8ede4;
-  --muted: #f0f1eb;
-  --muted-foreground: #5e6a61;
-  --border: #dce1d8;
+  /* Sampled from the Haus of Dink brand reference. */
+  --brand-cream: #fffeea;
+  --brand-green: #357423;
+  --brand-lime: #7ed956;
+  --background: var(--brand-cream);
+  --foreground: var(--brand-green);
+  --card: #fffef4;
+  --primary: var(--brand-green);
+  --primary-foreground: var(--brand-cream);
+  --secondary: #e5f3d6;
+  --accent: var(--brand-lime);
+  --muted: #f0f3df;
+  --muted-foreground: #526548;
+  --border: #cedbb8;
   --radius: 0.75rem;
 }
 
@@ -48,11 +54,16 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+  }
   a {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4;
   }
   ::selection {
-    background: #d4e4b8;
-    color: #182c24;
+    background: var(--brand-lime);
+    color: var(--brand-green);
   }
 }
+
