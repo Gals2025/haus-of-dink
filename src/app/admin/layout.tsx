@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
 import { Badge } from "@/components/ui/badge";
+import { AdminSignOut } from "./sign-out";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -19,7 +20,7 @@ export default async function AdminLayout({
       </a>
       <header className="flex flex-wrap items-center justify-between gap-4 border-b bg-background px-6 py-5">
         <Brand />
-        <Badge variant="outline">ADMIN PREVIEW</Badge>
+        <div className="flex items-center gap-3"><Badge variant="outline">ADMIN PREVIEW</Badge><AdminSignOut /></div>
       </header>
       <div className="mx-auto grid max-w-[1500px] lg:min-h-[calc(100vh-77px)] lg:grid-cols-[240px_1fr]">
         <aside className="border-b bg-background p-6 lg:border-r lg:border-b-0">
