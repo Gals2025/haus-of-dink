@@ -49,9 +49,8 @@ export default async function AdminPage() {
             Storefront and admin shells
           </p>
           <p className="mt-4 text-sm text-muted-foreground">
-            This is a public placeholder. Authentication and server-side admin
-            authorization must be implemented before adding protected data or
-            actions.
+            This workspace requires an active staff account. Additional admin
+            modules will be protected individually as they are implemented.
           </p>
         </CardContent>
       </Card>
