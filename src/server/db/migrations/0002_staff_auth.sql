@@ -13,3 +13,5 @@ CREATE TABLE "verification" ("id" text PRIMARY KEY NOT NULL, "identifier" text N
 CREATE INDEX "verification_identifier_idx" ON "verification" ("identifier");
 --> statement-breakpoint
 ALTER TABLE "user" ADD CONSTRAINT "user_staff_role_check" CHECK ("role" IN ('staff','admin','super_admin'));
+--> statement-breakpoint
+CREATE TABLE "rate_limit" ("id" text PRIMARY KEY NOT NULL, "key" text NOT NULL UNIQUE, "count" integer NOT NULL, "last_request" timestamptz NOT NULL);
