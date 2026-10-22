@@ -1,3 +1,4 @@
+import { requireStaff } from "@/server/auth/authorize";
 import { Check, CircleDashed } from "lucide-react";
 import {
   Card,
@@ -17,7 +18,8 @@ const plannedModules = [
   "Users & settings",
 ];
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  await requireStaff();
   return (
     <div className="space-y-8">
       <div>
