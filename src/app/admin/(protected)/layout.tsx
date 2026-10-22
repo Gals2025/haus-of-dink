@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { requireStaff } from "@/server/auth/authorize";
 import { ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
 import { Badge } from "@/components/ui/badge";
-import { AdminSignOut } from "./sign-out";
+import { AdminSignOut } from "../sign-out";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  await requireStaff();
   return (
     <div className="min-h-screen bg-muted/40">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:p-4">
