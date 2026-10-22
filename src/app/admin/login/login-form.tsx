@@ -20,6 +20,11 @@ export function LoginForm() {
         body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
       });
       if (!response.ok) throw new Error("Sign in failed");
+      const check = await fetch("/api/admin/session", { credentials: "same-origin", cache: "no-store" });
+      if (!check.ok) {
+        await fetch("/api/auth/sign-out", { method: "POST", credentials: "same-origin" });
+        throw new Error("Unauthorized staff");
+      }
       router.replace("/admin");
       router.refresh();
     } catch {
