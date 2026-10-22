@@ -4,7 +4,6 @@
  * Never pass passwords as CLI arguments or commit them to files.
  */
 import { loadEnvConfig } from "@next/env";
-import { eq, sql } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { account, user } from "../src/server/db/schema/auth";
@@ -26,13 +25,11 @@ async function main() {
   const userId = crypto.randomUUID();
   const accountId = crypto.randomUUID();
   const hashed = await hashPassword(password);
-  const result = await db.transaction(async (tx) => {
-    const users = await tx.select({ id: user.id }).from(user).limit(1);
-    if (users.length) throw new Error("Bootstrap disabled: user records already exist.");
-    await tx.insert(user).values({ id: userId, name, email, role: "super_admin", active: true, emailVerified: true });
-    await tx.insert(account).values({ id: accountId, userId, accountId: userId, providerId: "credential", password: hashed });
-    return true;
-  });
-  if (result) console.log("Super Admin created. Remove bootstrap credentials from the environment.");
+  // Neon HTTP supports atomic batch transactions, not interactive transactions.
+  await db.batch([
+    db.insert(user).values({ id: userId, name, email, role: "super_admin", active: true, emailVerified: true }),
+    db.insert(account).values({ id: accountId, userId, accountId: userId, providerId: "credential", password: hashed }),
+  ]);
+  console.log("Super Admin created. Remove bootstrap credentials from the environment.");
 }
 main().catch((error) => { console.error(error instanceof Error ? error.message : "Bootstrap failed"); process.exitCode = 1; });
