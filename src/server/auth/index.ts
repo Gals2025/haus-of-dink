@@ -5,15 +5,12 @@ import { getDb } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { getServerEnv } from "@/server/env";
 
-let authInstance: ReturnType<typeof betterAuth> | undefined;
-
-export function getAuth() {
-  if (authInstance) return authInstance;
+function createAuth() {
   const env = getServerEnv();
   if (!env.BETTER_AUTH_SECRET || !env.BETTER_AUTH_URL) {
     throw new Error("Better Auth server configuration is missing.");
   }
-  authInstance = betterAuth({
+  return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     database: drizzleAdapter(getDb(), { provider: "pg", schema }),
@@ -40,5 +37,11 @@ export function getAuth() {
     },
     advanced: { useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://") },
   });
+}
+
+let authInstance: ReturnType<typeof createAuth> | undefined;
+
+export function getAuth(): ReturnType<typeof createAuth> {
+  if (!authInstance) authInstance = createAuth();
   return authInstance;
 }
