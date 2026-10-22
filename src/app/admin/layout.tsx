@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireStaff } from "@/server/auth/authorize";
 import Link from "next/link";
 import { ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
@@ -9,9 +10,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  await requireStaff();
   return (
     <div className="min-h-screen bg-muted/40">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:p-4">
