@@ -1,3 +1,4 @@
+import { requireStaff } from "@/server/auth/authorize";
 import { Check, CircleDashed } from "lucide-react";
 import {
   Card,
@@ -17,7 +18,8 @@ const plannedModules = [
   "Users & settings",
 ];
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  await requireStaff();
   return (
     <div className="space-y-8">
       <div>
@@ -47,9 +49,8 @@ export default function AdminPage() {
             Storefront and admin shells
           </p>
           <p className="mt-4 text-sm text-muted-foreground">
-            This is a public placeholder. Authentication and server-side admin
-            authorization must be implemented before adding protected data or
-            actions.
+            This workspace requires an active staff account. Additional admin
+            modules will be protected individually as they are implemented.
           </p>
         </CardContent>
       </Card>
