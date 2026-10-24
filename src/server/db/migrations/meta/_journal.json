@@ -29,6 +29,13 @@
       "when": 1792840000000,
       "tag": "0003_admin_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792850000000,
+      "tag": "0004_rate_limit_milliseconds",
+      "breakpoints": true
     }
   ]
 }

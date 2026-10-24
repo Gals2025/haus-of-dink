@@ -55,3 +55,16 @@ Each request observes current state at its authorization query. Phase 3 uses an 
 Neon HTTP batch with a separate advisory-lock statement and mutation-time revalidation
 to protect account changes, session revocation, final-super-admin and audit invariants.
 The explicit Phase 3 permissions and target constraints are documented in `../admin/README.md`.
+
+## HTTP rate-limit compatibility follow-up
+
+Better Auth's database rate limiter uses numeric Unix milliseconds for `lastRequest`.
+The Drizzle field is `bigint` in number mode; pending migration 0004 converts the old
+timestamptz column without dropping bucket counts or keys. Apply it in a separately
+reviewed rollout before using this code against an existing database. Do not mix old
+application code with the new column type. The limiter remains enabled with database
+storage; no in-memory fallback or disabled protection was introduced.
+
+`auth-http.test.ts` tests the HTTP handler (internal `auth.api` calls bypass rate-limit
+middleware), including successful sign-in, invalid credentials, throttling, window
+reset, concurrent requests, logout and preservation of legacy rate-limit data.

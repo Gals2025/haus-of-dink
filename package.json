@@ -14,7 +14,7 @@
     "db:seed": "node --conditions=react-server --import tsx scripts/seed.ts",
     "db:test": "node --import tsx --test scripts/database.test.ts",
     "auth:bootstrap": "node --import tsx scripts/bootstrap-super-admin.ts",
-    "auth:test": "node --conditions=react-server --import tsx --test scripts/auth-database.test.ts scripts/authorization.test.ts scripts/admin-management.test.ts"
+    "auth:test": "node --conditions=react-server --import tsx --test scripts/auth-database.test.ts scripts/authorization.test.ts scripts/admin-management.test.ts scripts/auth-http.test.ts"
   },
   "dependencies": {
     "@fontsource/bodoni-moda": "^5.3.0",

@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -52,5 +52,6 @@ export const rateLimit = pgTable("rate_limit", {
   id: text("id").primaryKey(),
   key: text("key").notNull().unique(),
   count: integer("count").notNull(),
-  lastRequest: timestamp("last_request", { withTimezone: true }).notNull(),
+  // Better Auth persists Date.now() as numeric Unix milliseconds, not a Date.
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 });

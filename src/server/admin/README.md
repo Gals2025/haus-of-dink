@@ -8,7 +8,8 @@ role and active status. All three protected consumers (layout, dashboard, own-se
 API) already use explicit permissions. The authentication catch-all only manages Better
 Auth's own session lifecycle; signup and client-supplied role/active fields are disabled.
 The initial internal-API tests found no critical omission. Later HTTP-handler validation
-uncovered the Phase 2 blocker recorded below; this Phase 3 implementation is an unfinished draft.
+uncovered a Phase 2 rate-limit schema mismatch. The local fix and validation are recorded
+below; external migration application and integration verification remain pending.
 
 Before Phase 3 there was no user-management implementation or audit store. Reused:
 Better Auth, the centralized permission framework, lazy Neon/Drizzle access, PGlite
@@ -103,25 +104,45 @@ latest 50 entries; pagination/export, retention policy, account invitations and 
 recovery are separate follow-up features. Failed attempts are not stored as successful
 administrative audit changes; external security telemetry can record them separately.
 
-## Delivery status — blocked (2026-10-25, Asia/Manila)
+## Rate-limit blocker resolved locally (2026-10-25, Asia/Manila)
 
-STOPPED under the task's Phase 2/security blocker rule. The full HTTP-handler regression
-exposes an existing Better Auth rate-limit schema mismatch: `rateLimit.lastRequest` in
-`src/server/db/schema/auth.ts:55` and migration 0002 is a timestamptz, but installed Better
-Auth's database rate limiter passes `Date.now()` (numeric milliseconds). Drizzle's
-PgTimestamp mapper throws `TypeError: value.toISOString is not a function` before the
-sign-in handler executes. Neither that schema nor the existing auth options was changed
-by Phase 3. Baseline tests used `auth.api` and did not exercise HTTP rate limiting.
+The initial full HTTP-handler regression exposed a pre-existing schema mismatch:
+`rateLimit.lastRequest` was timestamptz, but Better Auth's database limiter passes
+numeric Unix milliseconds from `Date.now()`. Drizzle's timestamp mapper threw
+`TypeError: value.toISOString is not a function` before sign-in. Internal `auth.api`
+tests bypass HTTP middleware and therefore missed this failure.
 
-Latest sequential validation: typecheck PASS, lint PASS, auth:test FAIL (33 passes;
-one failing HTTP subtest plus its parent = 2 reported failures). db:test, db:check and
-build were NOT RUN after the failure, as work stopped on the newly discovered critical
-Phase 2 blocker. The draft's isolated mutation, listing, privilege restrictions, rollback,
-audit immutability and competing stale-request tests passed. Inactive HTTP sign-in
-validation cannot be completed until the rate-limit failure is repaired.
+The schema now maps `last_request` to `bigint` with Drizzle's `mode: "number"`.
+Pending migration `0004_rate_limit_milliseconds.sql` preserves bucket IDs, keys and
+counts, converting existing timestamps with `floor(extract(epoch ...) * 1000)`.
+Previous migration SQL was not rewritten. The application fix requires that pending
+migration before use against an existing database. Deploy schema and code together
+under a separately reviewed rollout; conversion changes the column type and takes a
+table lock. Never run older timestamp-based application code against the new column.
 
-Next: repair Phase 2's rate-limit column/adapter compatibility with a separately reviewed
-pending migration, add real HTTP sign-in and rate-limit regression tests, then restart
-the entire required validation sequence and complete Phase 3 verification. Do not use
-this draft or apply its migration as a release-ready change. No commits, pushes, PRs,
-deployments, external database migrations or production-record changes were performed.
+`auth-http.test.ts` exercises the real HTTP handler with shared production options:
+valid sign-in and usable cookie, numeric persistence, invalid credentials, HTTP 429
+and retry header after the sign-in limit, window reset, concurrent requests, and logout.
+A legacy-schema upgrade test preserves an existing millisecond-precision timestamp
+and bucket count and verifies a migration rerun is harmless. All tests use disposable
+PGlite; no environment files or external database connections are loaded by the tests.
+
+The complete required sequence passed in order:
+
+- `npm run typecheck`: PASS
+- `npm run lint`: PASS
+- `npm run auth:test`: PASS (42 tests)
+- `npm run db:test`: PASS (14 tests)
+- `npm run db:check`: PASS
+- `npm run build`: PASS (including `/admin/users` and `/admin/audit`)
+
+The inactive-account HTTP negative test receives a generic failure without SQL or
+session parameters in its response. Better Auth emits a server-side adapter diagnostic
+for the expected database-trigger rejection; production log redaction/handling should
+be reviewed before release. Independent-connection Neon lock behavior and browser UI
+flows still need the separate isolated integration checks described above.
+
+The prior Phase 3 draft was pushed as `ec2bd9c`. This follow-up contains the validated
+rate-limit fix for staging. No external migrations or live-record changes were performed.
+Migrations 0003 and 0004 remain pending externally; deployment and integration checks
+are separate from committing and pushing this code.
