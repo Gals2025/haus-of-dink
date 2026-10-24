@@ -1,4 +1,4 @@
-import { requireStaff } from "@/server/auth/authorize";
+import { requirePermission } from "@/server/auth/authorize";
 import { Check, CircleDashed } from "lucide-react";
 import {
   Card,
@@ -19,7 +19,7 @@ const plannedModules = [
 ];
 
 export default async function AdminPage() {
-  await requireStaff();
+  await requirePermission("dashboard:read");
   return (
     <div className="space-y-8">
       <div>
