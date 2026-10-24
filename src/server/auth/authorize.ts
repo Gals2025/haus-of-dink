@@ -1,17 +1,17 @@
 import "server-only";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray, type SQL } from "drizzle-orm";
 import { getAuth } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { user, session as sessions } from "@/server/db/schema";
 
-export const permissions = ["admin:access", "dashboard:read", "session:read", "super_admin:access"] as const;
+export const permissions = ["admin:access", "dashboard:read", "session:read", "super_admin:access", "users:read", "users:role", "users:status", "users:privileged", "audit:read"] as const;
 export type Permission = (typeof permissions)[number];
 export type StaffRole = "staff" | "admin" | "super_admin";
 
 // Only implemented operations are granted. Future mutations need new permissions.
 export const rolePermissions: Readonly<Record<StaffRole, readonly Permission[]>> = Object.freeze({
   staff: Object.freeze(["admin:access", "dashboard:read", "session:read"] as const),
-  admin: Object.freeze(["admin:access", "dashboard:read", "session:read"] as const),
+  admin: Object.freeze(["admin:access", "dashboard:read", "session:read", "users:read", "users:status"] as const),
   super_admin: Object.freeze([...permissions]),
 });
 
@@ -24,11 +24,11 @@ export function hasPermission(role: string, permission: string): boolean {
   return isStaffRole(role) && rolePermissions[role].some((allowed) => allowed === permission);
 }
 
-type AuthSession = ReturnType<typeof getAuth>["$Infer"]["Session"];
+export type AuthSession = ReturnType<typeof getAuth>["$Infer"]["Session"];
 type Staff = { id: string; active: boolean; role: string };
 
 /** Shared query predicates keep the session/user binding and expiry check atomic. */
-export function currentStaffSessionConditions(identity: AuthSession, now = new Date()) {
+export function currentStaffSessionConditions(identity: AuthSession, now: Date | SQL = new Date()) {
   return and(
     eq(sessions.id, identity.session.id),
     eq(sessions.token, identity.session.token),
@@ -95,3 +95,9 @@ export const { getStaffSession, getPermissionSession, requirePermission, require
     return staff;
   },
 });
+
+/** Reuse the same policy at the database statement boundary, after write locks. */
+export function currentPermissionSessionConditions(identity: AuthSession, permission: Permission, now: Date | SQL = new Date()) {
+  const roles = (Object.keys(rolePermissions) as StaffRole[]).filter((role) => hasPermission(role, permission));
+  return and(currentStaffSessionConditions(identity, now), inArray(user.role, roles));
+}

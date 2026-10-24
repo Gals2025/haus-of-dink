@@ -29,6 +29,7 @@ test("auth migration and database security invariants", async (t) => {
     });
     await t.test("sessions and accounts cascade when a user is deleted", async () => {
       await db.insert(account).values({ id: "account-1", accountId: "staff-1", providerId: "credential", userId: "staff-1", password: "test-hash" });
+      await db.update(user).set({ active: true }).where(eq(user.id, "staff-1"));
       await db.insert(session).values({ id: "session-1", token: "test-token", userId: "staff-1", expiresAt: new Date(Date.now() + 3600000) });
       await db.delete(user).where(eq(user.id, "staff-1"));
       assert.equal((await db.select().from(session)).length, 0);

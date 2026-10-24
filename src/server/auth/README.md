@@ -14,8 +14,8 @@ Unknown roles and permissions deny by default. Database errors propagate without
 | GET /api/admin/session (own role only) | `session:read` | Yes | Yes | Yes |
 | Compatibility `requireSuperAdmin()` boundary (no current consumer) | `super_admin:access` | No | No | Yes |
 
-There are no administrative data mutations, user management endpoints, or server actions
-yet. Roadmap cards do not grant access to future modules. Existing staff/admin dashboard
+At the Phase 2 baseline there were no administrative data mutations, user management
+endpoints, or server actions. Phase 3 is documented in `../admin/README.md`. Roadmap cards do not grant access to future modules. Existing staff/admin dashboard
 access is intended; granting user-management powers based only on dashboard access would
 be accidental over-permission. Phase 3 must introduce explicit mutation permissions and
 resource/target restrictions before exposing those operations.
@@ -51,7 +51,7 @@ No test loads production environment files or connects to Neon. Migration SQL is
 only inside disposable PGlite instances to validate compatibility; no external migration
 is applied. No schema change or migration is required for this phase.
 
-Each request observes current state at its authorization query. Future sensitive writes
-must also guard against concurrent role/account changes at mutation time. The Neon HTTP
-driver lacks interactive transactions; Phase 3 must address atomic final-super-admin and
-audit-write invariants before implementing management mutations.
+Each request observes current state at its authorization query. Phase 3 uses an atomic
+Neon HTTP batch with a separate advisory-lock statement and mutation-time revalidation
+to protect account changes, session revocation, final-super-admin and audit invariants.
+The explicit Phase 3 permissions and target constraints are documented in `../admin/README.md`.
