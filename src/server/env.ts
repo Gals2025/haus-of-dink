@@ -12,6 +12,8 @@ const serverEnvSchema = z.object({
     .optional(),
   BETTER_AUTH_SECRET: z.string().min(32).optional(),
   BETTER_AUTH_URL: z.url().optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  AUTH_EMAIL_FROM: z.email().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
 });
 
@@ -20,6 +22,8 @@ export function getServerEnv() {
     DATABASE_URL: process.env.DATABASE_URL || undefined,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET || undefined,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || undefined,
+    RESEND_API_KEY: process.env.RESEND_API_KEY || undefined,
+    AUTH_EMAIL_FROM: process.env.AUTH_EMAIL_FROM || undefined,
     BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN || undefined,
   });
   if (!parsed.success) {

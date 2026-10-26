@@ -37,6 +37,7 @@ export default async function AdminLayout({
               <LayoutDashboard aria-hidden="true" className="size-4" />
               Overview
             </Link>
+            {hasPermission(identity.staff.role, "inventory:read") && <Link href="/admin/inventory" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">Inventory</Link>}
             {hasPermission(identity.staff.role, "users:read") && <Link href="/admin/users" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">People & access</Link>}
             {hasPermission(identity.staff.role, "audit:read") && <Link href="/admin/audit" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">Access history</Link>}
             <Link

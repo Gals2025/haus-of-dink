@@ -1,4 +1,5 @@
-import { requirePermission } from "@/server/auth/authorize";
+import Link from "next/link";
+import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import { Check, CircleDashed } from "lucide-react";
 import {
   Card,
@@ -12,14 +13,13 @@ import { Badge } from "@/components/ui/badge";
 const plannedModules = [
   "Products & variants",
   "Categories & brands",
-  "Inventory & stock movements",
   "Orders & customers",
   "Promotions & reports",
   "Users & settings",
 ];
 
 export default async function AdminPage() {
-  await requirePermission("dashboard:read");
+  const identity = await requirePermission("dashboard:read");
   return (
     <div className="space-y-8">
       <div>
@@ -54,6 +54,7 @@ export default async function AdminPage() {
           </p>
         </CardContent>
       </Card>
+      {hasPermission(identity.staff.role, "inventory:read") && <Card><CardHeader><CardTitle>Stockroom</CardTitle><CardDescription>View available stock, record receipts and adjustments, and follow movement history.</CardDescription></CardHeader><CardContent><Link href="/admin/inventory" className="inline-block rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">Open inventory</Link></CardContent></Card>}
       <section aria-labelledby="modules-heading">
         <h2 id="modules-heading" className="mb-4 text-xl font-normal">
           On the roadmap

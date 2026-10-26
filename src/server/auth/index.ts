@@ -5,6 +5,7 @@ import { getDb } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { staffAuthOptions } from "./options";
 import { getServerEnv } from "@/server/env";
+import { createPasswordResetSender } from "./password-reset-email";
 
 function createAuth() {
   const env = getServerEnv();
@@ -16,6 +17,14 @@ function createAuth() {
     baseURL: env.BETTER_AUTH_URL,
     database: drizzleAdapter(getDb(), { provider: "pg", schema }),
     ...staffAuthOptions,
+    emailAndPassword: {
+      ...staffAuthOptions.emailAndPassword,
+      sendResetPassword: createPasswordResetSender({
+        baseURL: env.BETTER_AUTH_URL,
+        apiKey: env.RESEND_API_KEY,
+        from: env.AUTH_EMAIL_FROM,
+      }),
+    },
     advanced: { useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://") },
   });
 }

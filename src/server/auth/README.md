@@ -68,3 +68,7 @@ storage; no in-memory fallback or disabled protection was introduced.
 `auth-http.test.ts` tests the HTTP handler (internal `auth.api` calls bypass rate-limit
 middleware), including successful sign-in, invalid credentials, throttling, window
 reset, concurrent requests, logout and preservation of legacy rate-limit data.
+
+## Password recovery
+
+See [Password reset setup](./PASSWORD_RESET_SETUP.md) for staging email configuration, account verification, and reset security behavior.

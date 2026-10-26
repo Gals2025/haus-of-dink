@@ -4,7 +4,13 @@ export const staffAuthOptions = {
     enabled: true,
     disableSignUp: true,
     minPasswordLength: 12,
+    maxPasswordLength: 128,
+    resetPasswordTokenExpiresIn: 60 * 15,
+    revokeSessionsOnPasswordReset: true,
   },
+  verification: { storeIdentifier: "hashed" },
+  // Auth adapter failures can contain SQL parameters, passwords or tokens.
+  logger: { disabled: true },
   user: {
     additionalFields: {
       role: { type: "string", required: false, input: false, defaultValue: "staff" },
