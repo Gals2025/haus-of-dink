@@ -29,14 +29,15 @@ test("auth migration and database security invariants", async (t) => {
     });
     await t.test("sessions and accounts cascade when a user is deleted", async () => {
       await db.insert(account).values({ id: "account-1", accountId: "staff-1", providerId: "credential", userId: "staff-1", password: "test-hash" });
+      await db.update(user).set({ active: true }).where(eq(user.id, "staff-1"));
       await db.insert(session).values({ id: "session-1", token: "test-token", userId: "staff-1", expiresAt: new Date(Date.now() + 3600000) });
       await db.delete(user).where(eq(user.id, "staff-1"));
       assert.equal((await db.select().from(session)).length, 0);
       assert.equal((await db.select().from(account)).length, 0);
     });
     await t.test("rate limiting keys are unique", async () => {
-      await db.insert(rateLimit).values({ id: "rate-1", key: "login:test", count: 1, lastRequest: new Date() });
-      await assert.rejects(db.insert(rateLimit).values({ id: "rate-2", key: "login:test", count: 2, lastRequest: new Date() }));
+      await db.insert(rateLimit).values({ id: "rate-1", key: "login:test", count: 1, lastRequest: Date.now() });
+      await assert.rejects(db.insert(rateLimit).values({ id: "rate-2", key: "login:test", count: 2, lastRequest: Date.now() }));
     });
   } finally {
     await client.close();

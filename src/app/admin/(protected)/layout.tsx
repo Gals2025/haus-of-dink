@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireStaff } from "@/server/auth/authorize";
+import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import { ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  await requireStaff();
+  const identity = await requirePermission("admin:access");
   return (
     <div className="min-h-screen bg-muted/40">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:p-4">
@@ -32,12 +32,13 @@ export default async function AdminLayout({
           <nav aria-label="Admin" className="flex flex-wrap gap-2 lg:flex-col">
             <Link
               href="/admin"
-              aria-current="page"
               className="flex items-center gap-3 rounded-lg bg-secondary px-4 py-3 text-sm font-medium text-primary"
             >
               <LayoutDashboard aria-hidden="true" className="size-4" />
               Overview
             </Link>
+            {hasPermission(identity.staff.role, "users:read") && <Link href="/admin/users" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">People & access</Link>}
+            {hasPermission(identity.staff.role, "audit:read") && <Link href="/admin/audit" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">Access history</Link>}
             <Link
               href="/"
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-muted-foreground hover:bg-muted"
