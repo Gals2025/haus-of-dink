@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import { ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
+import { AdminNavLink } from "@/components/layout/admin-nav-link";
 import { Badge } from "@/components/ui/badge";
 import { AdminSignOut } from "../sign-out";
 
@@ -30,16 +31,13 @@ export default async function AdminLayout({
             WORKSPACE
           </p>
           <nav aria-label="Admin" className="flex flex-wrap gap-2 lg:flex-col">
-            <Link
-              href="/admin"
-              className="flex items-center gap-3 rounded-lg bg-secondary px-4 py-3 text-sm font-medium text-primary"
-            >
+            <AdminNavLink href="/admin">
               <LayoutDashboard aria-hidden="true" className="size-4" />
               Overview
-            </Link>
-            {hasPermission(identity.staff.role, "inventory:read") && <Link href="/admin/inventory" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">Inventory</Link>}
-            {hasPermission(identity.staff.role, "users:read") && <Link href="/admin/users" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">People & access</Link>}
-            {hasPermission(identity.staff.role, "audit:read") && <Link href="/admin/audit" className="rounded-lg px-4 py-3 text-sm hover:bg-muted">Access history</Link>}
+            </AdminNavLink>
+            {hasPermission(identity.staff.role, "inventory:read") && <AdminNavLink href="/admin/inventory">Inventory</AdminNavLink>}
+            {hasPermission(identity.staff.role, "users:read") && <AdminNavLink href="/admin/users">People & access</AdminNavLink>}
+            {hasPermission(identity.staff.role, "audit:read") && <AdminNavLink href="/admin/audit">Access history</AdminNavLink>}
             <Link
               href="/"
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-muted-foreground hover:bg-muted"
