@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { StoreContact } from "@/components/layout/store-contact";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 
 export default function StorefrontLayout({
@@ -17,7 +19,7 @@ export default function StorefrontLayout({
       </main>
       <footer className="border-t px-6 py-7 text-sm text-muted-foreground">
         <div className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3">
-          <span className="font-serif text-xl text-primary">Haus of Dink</span>
+          <Suspense fallback={<span className="font-serif text-xl text-primary">Haus of Dink</span>}><StoreContact /></Suspense>
           <span>Made for the court. Built for the community.</span>
         </div>
       </footer>

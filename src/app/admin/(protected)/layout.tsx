@@ -41,6 +41,11 @@ export default async function AdminLayout({
             {hasPermission(identity.staff.role, "inventory:read") && <AdminNavLink href="/admin/inventory">Inventory</AdminNavLink>}
             {hasPermission(identity.staff.role, "users:read") && <AdminNavLink href="/admin/users">People & access</AdminNavLink>}
             {hasPermission(identity.staff.role, "audit:read") && <AdminNavLink href="/admin/audit">Access history</AdminNavLink>}
+            {hasPermission(identity.staff.role, "orders:read") && <AdminNavLink href="/admin/orders">Orders</AdminNavLink>}
+            {hasPermission(identity.staff.role, "customers:read") && <AdminNavLink href="/admin/customers">Customers</AdminNavLink>}
+            {hasPermission(identity.staff.role, "promotions:read") && <AdminNavLink href="/admin/promotions">Promotions</AdminNavLink>}
+            {hasPermission(identity.staff.role, "reports:read") && <AdminNavLink href="/admin/reports">Reports</AdminNavLink>}
+            {hasPermission(identity.staff.role, "settings:read") && <AdminNavLink href="/admin/settings">Store settings</AdminNavLink>}
             <Link
               href="/"
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-muted-foreground hover:bg-muted"

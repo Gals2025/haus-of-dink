@@ -4,14 +4,14 @@ import { getAuth } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { user, session as sessions } from "@/server/db/schema";
 
-export const permissions = ["admin:access", "dashboard:read", "session:read", "super_admin:access", "users:read", "users:role", "users:status", "users:privileged", "users:create", "users:update", "users:delete", "audit:read", "inventory:read", "inventory:write", "inventory:reserve", "inventory:sell"] as const;
+export const permissions = ["admin:access", "dashboard:read", "session:read", "super_admin:access", "users:read", "users:role", "users:status", "users:privileged", "users:create", "users:update", "users:delete", "audit:read", "inventory:read", "inventory:write", "inventory:reserve", "inventory:sell", "orders:read", "orders:write", "customers:read", "customers:write", "promotions:read", "promotions:write", "reports:read", "settings:read", "settings:write"] as const;
 export type Permission = (typeof permissions)[number];
 export type StaffRole = "staff" | "admin" | "super_admin";
 
 // Only implemented operations are granted. Future mutations need new permissions.
 export const rolePermissions: Readonly<Record<StaffRole, readonly Permission[]>> = Object.freeze({
   staff: Object.freeze(["admin:access", "dashboard:read", "session:read", "inventory:read"] as const),
-  admin: Object.freeze(["admin:access", "dashboard:read", "session:read", "users:read", "users:status", "inventory:read", "inventory:write", "inventory:reserve", "inventory:sell"] as const),
+  admin: Object.freeze(["admin:access", "dashboard:read", "session:read", "users:read", "users:status", "inventory:read", "inventory:write", "inventory:reserve", "inventory:sell", "orders:read", "orders:write", "customers:read", "customers:write", "promotions:read", "promotions:write", "reports:read", "settings:read"] as const),
   super_admin: Object.freeze([...permissions]),
 });
 

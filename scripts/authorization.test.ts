@@ -63,7 +63,7 @@ test("authorization with real Better Auth sessions and isolated PostgreSQL", asy
     for (const role of ["staff", "admin", "super_admin"] as const) {
       await t.test(`${role}: explicit operation permissions and compatibility helpers`, async () => {
         await signIn(role);
-        const allowed: readonly string[] = role === "super_admin" ? permissions : role === "admin" ? ["admin:access", "dashboard:read", "session:read", "users:read", "users:status", "inventory:read", "inventory:write", "inventory:reserve", "inventory:sell"] : ["admin:access", "dashboard:read", "session:read", "inventory:read"];
+        const allowed: readonly string[] = role === "super_admin" ? permissions : role === "admin" ? ["admin:access", "dashboard:read", "session:read", "users:read", "users:status", "inventory:read", "inventory:write", "inventory:reserve", "inventory:sell", "orders:read", "orders:write", "customers:read", "customers:write", "promotions:read", "promotions:write", "reports:read", "settings:read"] : ["admin:access", "dashboard:read", "session:read", "inventory:read"];
         for (const permission of permissions) {
           assert.equal(Boolean(await access.getPermissionSession(permission)), allowed.includes(permission));
           if (allowed.includes(permission)) assert.equal((await access.requirePermission(permission)).staff.role, role);

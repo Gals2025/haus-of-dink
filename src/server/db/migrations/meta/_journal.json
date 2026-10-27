@@ -71,6 +71,13 @@
       "when": 1793083729480,
       "tag": "0009_catalog_management",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793084957352,
+      "tag": "0010_commerce",
+      "breakpoints": true
     }
   ]
 }

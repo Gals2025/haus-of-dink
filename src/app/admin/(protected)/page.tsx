@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/server/auth/authorize";
-import { CircleDashed } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -9,10 +8,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const plannedModules = [
-  "Orders & customers",
-  "Promotions & reports",
-  "Store settings",
+const commerceModules = [
+  { title: "Orders & customers", description: "Record orders, track payments and fulfillment, and manage customer contacts.", href: "/admin/orders", permission: "orders:read" },
+  { title: "Promotions & reports", description: "Manage discount codes and review fulfilled sales and daily totals.", href: "/admin/promotions", permission: "promotions:read" },
+  { title: "Store settings", description: "Maintain business details and the shipping fee for new orders.", href: "/admin/settings", permission: "settings:read" },
 ];
 
 export default async function AdminPage() {
@@ -35,19 +34,16 @@ export default async function AdminPage() {
       {hasPermission(identity.staff.role, "inventory:read") && <div className="grid gap-4 md:grid-cols-2"><Card><CardHeader><CardTitle>Variant management</CardTitle><CardDescription>Maintain SKUs, pricing, status and color or size options.</CardDescription></CardHeader><CardContent><Link className="underline" href="/admin/variants">Open variants</Link></CardContent></Card><Card><CardHeader><CardTitle>Categories &amp; brands</CardTitle><CardDescription>Manage categories, brands and variant attributes.</CardDescription></CardHeader><CardContent><Link className="underline" href="/admin/catalog">Open catalog settings</Link></CardContent></Card></div>}
       <section aria-labelledby="modules-heading">
         <h2 id="modules-heading" className="mb-4 text-xl font-normal">
-          On the roadmap
+          Store operations
         </h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {plannedModules.map((name) => (
-            <Card key={name}>
+          {commerceModules.filter(module => hasPermission(identity.staff.role, module.permission)).map((module) => (
+            <Card key={module.href}>
               <CardHeader>
-                <CircleDashed
-                  aria-hidden="true"
-                  className="mb-3 size-5 text-muted-foreground"
-                />
-                <CardTitle className="text-base">{name}</CardTitle>
-                <CardDescription>Planned for a future phase</CardDescription>
+                <CardTitle className="text-base">{module.title}</CardTitle>
+                <CardDescription>{module.description}</CardDescription>
               </CardHeader>
+              <CardContent><Link className="underline" href={module.href}>Open {module.title.toLowerCase()}</Link></CardContent>
             </Card>
           ))}
         </div>
