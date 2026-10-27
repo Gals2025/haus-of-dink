@@ -39,7 +39,7 @@ export default async function ProductPage({ params, searchParams }: {
         <tbody>{p.variants.map((v) => <tr key={v.id} className="border-b last:border-0"><td className="p-4">{v.sku}</td><td className="p-4">{v.barcode || "—"}</td>
           <td className="p-4 whitespace-nowrap">{v.currency} {(v.price / 100).toFixed(2)}</td><td className="p-4 whitespace-nowrap">{v.compareAtPrice === null ? "—" : `${v.currency} ${(v.compareAtPrice / 100).toFixed(2)}`}</td><td className="p-4 capitalize">{v.status}</td></tr>)}
           {!p.variants.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No variants yet.</td></tr>}</tbody></table></div>
-      {canWrite && p.status !== "archived" && <VariantForm productId={p.id} />}
+      {canWrite && p.status !== "archived" && <VariantForm productId={p.id} productSlug={p.slug} existingSkus={p.variants.map((v) => v.sku)} />}
       {canWrite && p.variants.map((v) => <Link key={v.id} className="mr-4 inline-block text-sm underline" href={`/admin/inventory/adjustments?variantId=${v.id}&type=PURCHASE`}>Receive stock: {v.sku}</Link>)}
       <Link className="inline-block text-sm underline" href="/admin/inventory">Open inventory</Link>
     </section>
