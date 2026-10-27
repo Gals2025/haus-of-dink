@@ -146,3 +146,40 @@ The prior Phase 3 draft was pushed as `ec2bd9c`. This follow-up contains the val
 rate-limit fix for staging. No external migrations or live-record changes were performed.
 Migrations 0003 and 0004 remain pending externally; deployment and integration checks
 are separate from committing and pushing this code.
+
+## People & access CRUD (2026-10-27)
+
+`/admin/users` now includes Add team member, Edit profile and confirmed Delete,
+using the existing list, filters, pagination, role and activation controls.
+`users:create`, `users:update` and `users:delete` are granted only to super admins.
+Admins retain read access and staff activation/deactivation. Staff cannot manage users.
+All operations resolve the actor on the server and recheck the current permission,
+session and account after the shared management lock. Profile and delete requests
+also compare the displayed name/email/role/status to reject stale confirmations.
+Your own account is protected. Deletion retains the last-active-super-admin check.
+
+Creation normalizes email, rejects case-insensitive duplicates and hashes a 12–128
+character initial password with Better Auth's password hasher. User, credential
+and audit insertions commit atomically. Profiles support name/email updates;
+changing email clears email verification. Profile edits revoke existing sessions.
+Deletion removes credentials and sessions through the existing foreign keys;
+audit history survives. Accounts referenced by inventory movements cannot be
+deleted: deactivate them instead to preserve the inventory ledger. No bulk user
+imports, invitations, public sign-up or password-reset behavior is added.
+The existing reset flow depends on its separately configured email delivery.
+
+Apply `0008_people_crud.sql` using the normal reviewed migration process, after
+identifying the intended database and verifying its migration history. It extends
+`admin_audit_action_check` to allow `create`, `profile`, `delete`, preserving all
+existing audit events and append-only triggers. It changes no live users. Without
+this migration, the new lifecycle operations roll back when their audit inserts
+are rejected. No migrations run from builds or page requests.
+
+CRUD tests use disposable PGlite and real Better Auth credential sign-in. They cover
+role restrictions (including forged stale authorization), input validation, email
+normalization/duplicates, hashed credential compatibility, stale profile edits,
+self-protection, session revocation, deletion cascades, retained audit history,
+inventory-history deletion rejection and full rollback when audit insertion fails.
+Profile audit events record actor/target and access state, not prior name/email.
+Independent Neon connection concurrency and authenticated browser flows remain
+integration checks; isolated tests do not prove production transport behavior.

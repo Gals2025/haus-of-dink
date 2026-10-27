@@ -13,8 +13,8 @@ export default async function AuditPage() {
         <td className="whitespace-nowrap p-4">{new Date(entry.createdAt).toISOString().replace("T", " ").slice(0, 19)}</td>
         <td className="max-w-64 break-all p-4"><p>Actor: {entry.actorId}</p><p>Target: {entry.targetId}</p></td>
         <td className="p-4">{entry.action}</td>
-        <td className="p-4">{entry.beforeRole} / {entry.beforeActive ? "active" : "inactive"}</td>
-        <td className="p-4">{entry.afterRole} / {entry.afterActive ? "active" : "inactive"}</td>
+        <td className="p-4">{entry.action === "create" ? "—" : `${entry.beforeRole} / ${entry.beforeActive ? "active" : "inactive"}`}</td>
+        <td className="p-4">{entry.action === "delete" ? "Deleted" : `${entry.afterRole} / ${entry.afterActive ? "active" : "inactive"}`}</td>
       </tr>)}</tbody></table>{!entries.length && <p className="p-8">No administrative changes recorded yet.</p>}</div>
   </div>;
 }

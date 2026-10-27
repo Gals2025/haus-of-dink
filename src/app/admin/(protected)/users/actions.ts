@@ -17,3 +17,16 @@ export async function changeUser(input: unknown): Promise<ChangeResult> {
     return { ok: false, error: "Unable to save the change. Refresh to check the account before retrying." };
   }
 }
+
+export async function createUser(input: unknown): Promise<ChangeResult> {
+  try {
+    const result = await userManagement.create(input);
+    if (result.ok) {
+      revalidatePath("/admin/users");
+      revalidatePath("/admin/audit");
+    }
+    return result;
+  } catch {
+    return { ok: false, error: "Unable to create the account. Check for an existing email or refresh before retrying." };
+  }
+}

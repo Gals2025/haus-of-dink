@@ -12,9 +12,20 @@ const expected = {
   expectedRole: z.enum(roles),
   expectedActive: z.boolean(),
 };
+const profile = {
+  name: z.string().trim().min(1).max(100),
+  email: z.string().trim().toLowerCase().max(254).pipe(z.email()),
+};
+export const userCreate = z.object({
+  ...profile, role: z.enum(roles).default("staff"), active: z.boolean().default(true),
+  password: z.string().min(12).max(128),
+}).strict();
+const expectedProfile = { expectedName: z.string().max(100), expectedEmail: z.string().max(254) };
 export const userChange = z.discriminatedUnion("kind", [
   z.object({ ...expected, kind: z.literal("role"), role: z.enum(roles) }).strict(),
   z.object({ ...expected, kind: z.literal("status"), active: z.boolean() }).strict(),
+  z.object({ ...expected, ...expectedProfile, ...profile, kind: z.literal("profile") }).strict(),
+  z.object({ ...expected, ...expectedProfile, kind: z.literal("delete") }).strict(),
 ]);
 export type UserFilters = z.infer<typeof userFilters>;
 export type UserChange = z.infer<typeof userChange>;

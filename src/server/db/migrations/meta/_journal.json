@@ -57,6 +57,13 @@
       "when": 1793070960557,
       "tag": "0007_catalog_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793074221576,
+      "tag": "0008_people_crud",
+      "breakpoints": true
     }
   ]
 }

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { roles, type ManagedUser, type UserChange } from "@/server/admin/contracts";
+import { UserForm } from "./user-form";
 import { changeUser } from "./actions";
 
-export function UserTable({ users, viewerId, canAssignRoles, canChangeStatus, canManagePrivileged }: {
-  users: ManagedUser[]; viewerId: string; canAssignRoles: boolean; canChangeStatus: boolean; canManagePrivileged: boolean;
+export function UserTable({ users, viewerId, canAssignRoles, canChangeStatus, canManagePrivileged, canEdit, canDelete }: {
+  users: ManagedUser[]; viewerId: string; canAssignRoles: boolean; canChangeStatus: boolean; canManagePrivileged: boolean; canEdit: boolean; canDelete: boolean;
 }) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -27,7 +28,7 @@ export function UserTable({ users, viewerId, canAssignRoles, canChangeStatus, ca
     startTransition(async () => {
       try {
         const result = await changeUser(proposed.change);
-        if (result.ok) { setMessage("Account access updated. Existing sessions were revoked."); router.refresh(); }
+        if (result.ok) { setMessage(proposed.change.kind === "delete" ? "Account deleted. Audit history was preserved." : "Account updated. Existing sessions were revoked."); router.refresh(); }
         else setError(result.error);
       } catch { setError("Unable to save the change. Refresh before trying again."); }
       dialog.current?.close(); setProposed(null);
@@ -57,6 +58,9 @@ export function UserTable({ users, viewerId, canAssignRoles, canChangeStatus, ca
               </select>}
               {canManage && canChangeStatus && <Button variant={user.active ? "outline" : "default"} size="sm" disabled={pending}
                 onClick={() => propose(user, { ...expected, kind: "status", active: !user.active })}>{user.active ? "Deactivate" : "Activate"}</Button>}
+              {canManage && canEdit && <UserForm user={user} />}
+              {canManage && canDelete && <Button variant="outline" size="sm" disabled={pending}
+                onClick={() => propose(user, { ...expected, expectedName: user.name, expectedEmail: user.email, kind: "delete" })}>Delete</Button>}
               {!canManage && <span className="text-muted-foreground">Protected</span>}
             </div></td>
           </tr>;
@@ -71,6 +75,7 @@ export function UserTable({ users, viewerId, canAssignRoles, canChangeStatus, ca
       <p id="confirm-description" className="mt-4 text-sm leading-6">
         {proposed?.change.kind === "role"
           ? `Change ${proposed.user.name}’s role from ${proposed.user.role.replaceAll("_", " ")} to ${proposed.change.role.replaceAll("_", " ")}?`
+          : proposed?.change.kind === "delete" ? `Permanently delete ${proposed.user.name} (${proposed.user.email})? This cannot be undone. Audit history will be retained. Accounts with inventory history must be deactivated instead.`
           : `${proposed?.change.kind === "status" && proposed.change.active ? "Activate" : "Deactivate"} ${proposed?.user.name}’s account?`}
         {" "}All existing sessions will be revoked. This change will be recorded in the audit history.
       </p>

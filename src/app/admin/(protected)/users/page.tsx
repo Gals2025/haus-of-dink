@@ -1,6 +1,7 @@
 import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import { userManagement } from "@/server/admin/service";
 import { userFilters, roles } from "@/server/admin/contracts";
+import { UserForm } from "./user-form";
 import { UserTable } from "./user-table";
 import Link from "next/link";
 
@@ -19,6 +20,7 @@ export default async function UsersPage({ searchParams }: {
     <div><p className="text-xs tracking-widest">HAUS OF DINK / WORKSPACE</p>
       <h1 className="mt-3 text-4xl">People & access</h1>
       <p className="mt-3 text-muted-foreground">Manage your team’s access to Haus of Dink.</p></div>
+    {hasPermission(identity.staff.role, "users:create") && <UserForm />}
     {!parsed.success && <p role="alert" className="text-destructive">Invalid filters. Showing the first page.</p>}
     <form className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4" action="/admin/users">
       <label className="min-w-48 flex-1 text-sm">Search name or email
@@ -33,6 +35,8 @@ export default async function UsersPage({ searchParams }: {
       <button className="rounded-md bg-primary px-4 py-2 text-primary-foreground">Apply filters</button>
     </form>
     <UserTable users={users} viewerId={identity.staff.id}
+      canEdit={hasPermission(identity.staff.role, "users:update")}
+      canDelete={hasPermission(identity.staff.role, "users:delete")}
       canAssignRoles={hasPermission(identity.staff.role, "users:role")}
       canChangeStatus={hasPermission(identity.staff.role, "users:status")}
       canManagePrivileged={hasPermission(identity.staff.role, "users:privileged")} />
