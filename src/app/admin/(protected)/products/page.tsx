@@ -19,6 +19,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <h1 className="mt-3 text-4xl">Products</h1><p className="mt-3 text-muted-foreground">Manage your catalog. Stock quantities remain in Inventory.</p></div>
       {canWrite && <Link href="/admin/products/new" className="rounded-md bg-primary px-4 py-3 text-sm text-primary-foreground">Create product</Link>}</header>
     {canWrite && <div className="grid max-w-3xl gap-4 sm:grid-cols-2"><OptionCreator kind="brand" /><OptionCreator kind="category" /></div>}
+    <Link href="/admin/catalog" className="inline-block text-sm underline">Manage categories, brands and attributes</Link>
     {!parsed.success && <p role="alert" className="text-sm text-destructive">Invalid filters. Showing the first page with default filters.</p>}
     {!options.ok && <p role="alert" className="text-sm text-destructive">Brand and category filters are temporarily unavailable.</p>}
     <form action="/admin/products" className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 xl:grid-cols-4">

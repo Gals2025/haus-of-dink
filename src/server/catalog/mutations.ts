@@ -6,7 +6,7 @@ import { getDb } from "@/server/db";
 import { createProductInput, updateProductInput, productId, errors, type MutationResult } from "./contracts";
 import { mutateProductQuery, type ProductAction } from "./mutation-queries";
 
-type Outcome = { authorized: boolean; found: boolean; changed: boolean };
+type Outcome = { authorized: boolean; found: boolean; changed: boolean; validReferences?: boolean };
 export type MutationStorage = {
   authorize: typeof getPermissionSession;
   // Must run managementLock FIRST, then query in the SAME READ COMMITTED transaction.
@@ -37,6 +37,7 @@ export function createCatalogMutations(deps: MutationStorage) {
       const result = await deps.change(mutateProductQuery(identity, action, parsedId.data, parsed.data));
       if (!result?.authorized) return errors.FORBIDDEN;
       if (action !== "create" && !result.found) return errors.NOT_FOUND;
+      if (result.validReferences === false) return { ...errors.REFERENCE, error: "Choose an active brand and category. Existing inactive selections can be retained." };
       if (action === "create" && !result.changed) return errors.UNAVAILABLE;
       return { ok: true, productId: parsedId.data, changed: result.changed };
     } catch (error) { return databaseFailure(error); }

@@ -64,6 +64,13 @@
       "when": 1793074221576,
       "tag": "0008_people_crud",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793083729480,
+      "tag": "0009_catalog_management",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 "use server";
-import { createProductVariant } from "@/server/catalog/variant-mutations";
+import { createProductVariant, updateProductVariant, deleteProductVariant } from "@/server/catalog/variant-mutations";
 import { createCatalogOption } from "@/server/catalog/option-mutations";
 import { revalidatePath } from "next/cache";
 import { getPermissionSession } from "@/server/auth/authorize";
@@ -12,7 +12,7 @@ const actions = createProductAdminActions({ authorize: getPermissionSession,
     revalidatePath("/admin/products");
     revalidatePath(`/admin/products/${id}`);
     revalidatePath(`/admin/products/${id}/edit`);
-    revalidatePath("/admin/inventory");
+    revalidatePath("/admin/inventory"); revalidatePath("/admin/variants");
   },
 });
 export async function createCatalogProduct(input: unknown) { return actions.create(input); }
@@ -33,8 +33,19 @@ export async function addProductVariant(input: unknown) {
   if (result.ok) {
     try {
       revalidatePath(`/admin/products/${result.productId}`);
-      revalidatePath("/admin/inventory");
+      revalidatePath("/admin/inventory"); revalidatePath("/admin/variants");
     } catch { /* write already confirmed */ }
   }
+  return result;
+}
+
+export async function editProductVariant(id: unknown, input: unknown) {
+  const result = await updateProductVariant(id, input);
+  if (result.ok) { try { revalidatePath("/admin/products", "layout"); revalidatePath("/admin/variants"); revalidatePath("/admin/inventory"); } catch { /* committed */ } }
+  return result;
+}
+export async function removeProductVariant(id: unknown, productId: unknown) {
+  const result = await deleteProductVariant(id, productId);
+  if (result.ok) { try { revalidatePath("/admin/products", "layout"); revalidatePath("/admin/variants"); revalidatePath("/admin/inventory"); } catch { /* committed */ } }
   return result;
 }

@@ -23,9 +23,12 @@ export function createOptionMutations(deps: {
       const table = sql.identifier(parsedKind.data === "brand" ? "brands" : "categories");
       const result = await deps.change(sql`with actor as materialized (${catalogActor(identity, "inventory:write", true)}),
         created as (insert into ${table} (name, slug)
-          select ${parsed.data.name}, ${parsed.data.slug} from actor returning id, name, status)
+          select ${parsed.data.name}, ${parsed.data.slug} from actor returning id, name, status, slug),
+        logged as (insert into catalog_management_audit(actor_id, entity_type, entity_id, action, changes)
+          select a.id, ${parsedKind.data}, c.id, 'create', jsonb_build_object('name', c.name, 'after', to_jsonb(c))
+          from created c cross join actor a returning entity_id)
         select exists(select 1 from actor) as authorized,
-          (select jsonb_build_object('id', id, 'name', name, 'status', status) from created) as option`);
+          (select jsonb_build_object('id', id, 'name', name, 'status', status) from created where exists(select 1 from logged)) as option`);
       if (!result?.authorized) return errors.FORBIDDEN;
       return result.option ? { ok: true, option: result.option } : errors.UNAVAILABLE;
     } catch (error) {

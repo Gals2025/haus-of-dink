@@ -13,7 +13,7 @@ cannot bypass runtime validation. All results use `{ ok: true, ... }` or
 - `reactivateProduct(productId: unknown): Promise<MutationResult>`
 
 Staff pages and Server Actions are described in the Phase 3 section below.
-Public HTTP mutation routes and variant mutations are not exposed.
+Public HTTP mutation routes are not exposed. Server Action variant and catalog management workflows are documented below.
 
 ## Contracts and reads
 
@@ -103,7 +103,7 @@ a production connection for that test target.
   pages and total counts; query-string filters survive pagination.
 - `/admin/products/new`: permission-protected create form, default draft,
   automatic/editable slug, database-backed brand/category choices.
-- `/admin/products/[productId]`: detail with read-only variants and images,
+- `/admin/products/[productId]`: detail with editable variants and read-only images,
   success feedback, confirmed archive/reactivate operations.
 - `/admin/products/[productId]/edit`: editable fields and explicit null clearing
   of descriptions; sends only changed fields to preserve other editors' work.
@@ -126,8 +126,8 @@ to avoid inviting a duplicate create; the client also navigates/refreshes.
 
 The existing inventory and user/access screens are unchanged. Products appears
 as its own workspace module with the existing selected-navigation behavior.
-There are no image uploads, variant mutations, brand/category mutations,
-storefront changes, new migrations, or automatic migration commands in this UI.
+Image uploads and storefront changes remain outside this UI. Catalog and variant
+management extensions and their explicit migration are described below.
 
 `catalog-admin.test.ts` covers query parsing and pagination preservation, partial
 edit payloads, permission-gated actions, current option-read authorization, safe
@@ -141,8 +141,8 @@ application; the local test runner does not substitute for that check.
 
 On a product detail page, inventory writers can add a SKU with a PHP selling
 price, optional barcode, unit cost and compare-at price. Simple products need
-one SKU; separate colors/sizes can have distinct SKUs. Attribute assignment is
-not part of this form. Archived products must be reactivated first.
+one SKU; separate colors/sizes can have distinct SKUs. Attribute values can be selected in the SKU form; maintain available options
+in Categories & brands. Archived products must be reactivated first.
 
 SKU creation validates the existing variant contract, rechecks current access
 under the management lock and inserts a catalog audit update atomically.
@@ -154,3 +154,45 @@ Choose Opening stock for items already on hand. Both use the existing inventory
 ledger and request identifiers; retrying a receipt cannot add stock twice.
 The variant integration test creates a product, adds its SKU, confirms its zero
 balance, receives a delivery, retries it, and checks authorization and rollback.
+
+## Catalog and variant management
+
+Apply `0009_catalog_management.sql` through the normal migration process to an
+explicitly identified database before deploying these workflows. It adds the
+append-only `catalog_management_audit` table and its immutability triggers;
+there is no automatic migration during requests or builds.
+
+- `/admin/catalog`: searchable brand, category, attribute and attribute-value
+  lists. Writers can create/edit records and delete unused records after an
+  explicit confirmation. Brand fields include description, HTTPS website and
+  HTTPS logo URL. Categories support parent selection and recursive cycle
+  prevention. Brands/categories can be active or inactive; new product
+  assignments require active choices, while existing inactive references can
+  be retained. Attribute values cannot move to another attribute.
+- `/admin/catalog/history`: latest 100 catalog management changes, with before
+  and after metadata. Descriptions are excluded from audit snapshots. History
+  survives removal of unused catalog records.
+- `/admin/variants`: searchable, status-filtered, paginated cross-product SKU
+  list with prices, costs and option labels. Each row links to its product.
+- Product detail: create/edit variants, assign one value per attribute, edit
+  SKU/barcode/prices/cost/status, and explicitly delete unused SKUs. Selecting
+  no values preserves support for simple or legacy SKUs. Nonempty attribute
+  combinations must be unique within a product, including inactive variants.
+  Variant changes and assignments are audited atomically in `catalog_audit`.
+
+All reads recheck inventory:read and all writes recheck inventory:write at the
+SQL boundary. Management mutations use the shared transaction management lock,
+which serializes ancestry/reference/combinations checks with other application
+writes. These checks do not protect arbitrary direct SQL writes outside the
+application. Foreign keys remain authoritative for deletion restrictions.
+Variant removal is blocked by any stock, reserved quantity, movement or
+reservation history. Empty balance rows without history can be removed along
+with an unused SKU. Deactivation preserves all stock and history; inactive SKUs
+must be reactivated before recording further inventory movements.
+
+`catalog-management.test.ts` verifies CRUD, category ancestry cycles, HTTPS
+validation, current database authorization, attribute ownership and replacement,
+duplicate combinations, paginated/escaped SKU search, inventory protection,
+audit immutability and rollback in disposable PGlite. No live database is used.
+Signed-in browser flows and independent Neon connection concurrency still need
+verification against an explicitly configured non-production application.

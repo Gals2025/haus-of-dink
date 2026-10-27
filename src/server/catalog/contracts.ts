@@ -35,7 +35,7 @@ export type Product = Omit<ProductInput, "description" | "shortDescription"> & {
   id: string; description: string | null; shortDescription: string | null; createdAt: string; updatedAt: string;
 };
 export type ProductDetail = Product & {
-  variants: { id: string; sku: string; barcode: string | null; price: number; compareAtPrice: number | null; currency: string; status: string }[];
+  variants: { id: string; sku: string; barcode: string | null; price: number; cost: number | null; attributes: { id: string; attributeId: string; name: string; value: string }[]; compareAtPrice: number | null; currency: string; status: string }[];
   images: { id: string; variantId: string | null; blobUrl: string; altText: string; isPrimary: boolean; sortOrder: number }[];
 };
 export type CatalogError = "VALIDATION" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "REFERENCE" | "UNAVAILABLE";

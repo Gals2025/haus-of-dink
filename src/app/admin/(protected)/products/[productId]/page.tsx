@@ -1,3 +1,4 @@
+import { catalogManagement } from "@/server/catalog/management";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,11 +12,12 @@ export default async function ProductPage({ params, searchParams }: {
 }) {
   const identity = await requirePermission("inventory:read");
   const { productId } = await params;
-  const [result, options, query] = await Promise.all([getProductDetail(productId), listProductOptions(), searchParams]);
+  const [result, options, query, managed] = await Promise.all([getProductDetail(productId), listProductOptions(), searchParams, catalogManagement.list()]);
   if (!result.ok) {
     if (result.code === "NOT_FOUND" || result.code === "VALIDATION") notFound();
     return <p role="alert">{result.error}</p>;
   }
+  const attributes = managed.ok ? managed.attributes.map((a) => ({ id: a.id, name: a.name, values: managed.values.filter((v) => v.attributeId === a.id).map((v) => ({ id: v.id, value: v.name })) })) : [];
   const p = result.product; const canWrite = hasPermission(identity.staff.role, "inventory:write");
   return <div className="space-y-6">
     <Link className="text-sm underline" href="/admin/products">Back to products</Link>
@@ -35,12 +37,14 @@ export default async function ProductPage({ params, searchParams }: {
     </section>
     <section className="space-y-3"><h2 className="text-2xl">Variants</h2><p className="text-sm text-muted-foreground">Each SKU tracks its own stock. Add a SKU, then receive its opening stock or deliveries.</p>
       <div className="overflow-x-auto rounded-xl border bg-card"><table className="w-full text-left text-sm"><caption className="sr-only">Existing product variants</caption>
-        <thead className="border-b bg-muted/50"><tr>{["SKU", "Barcode", "Price", "Compare-at price", "Status"].map((label) => <th key={label} scope="col" className="p-4">{label}</th>)}</tr></thead>
-        <tbody>{p.variants.map((v) => <tr key={v.id} className="border-b last:border-0"><td className="p-4">{v.sku}</td><td className="p-4">{v.barcode || "—"}</td>
-          <td className="p-4 whitespace-nowrap">{v.currency} {(v.price / 100).toFixed(2)}</td><td className="p-4 whitespace-nowrap">{v.compareAtPrice === null ? "—" : `${v.currency} ${(v.compareAtPrice / 100).toFixed(2)}`}</td><td className="p-4 capitalize">{v.status}</td></tr>)}
-          {!p.variants.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No variants yet.</td></tr>}</tbody></table></div>
-      {canWrite && p.status !== "archived" && <VariantForm productId={p.id} productSlug={p.slug} existingSkus={p.variants.map((v) => v.sku)} />}
-      {canWrite && p.variants.map((v) => <Link key={v.id} className="mr-4 inline-block text-sm underline" href={`/admin/inventory/adjustments?variantId=${v.id}&type=PURCHASE`}>Receive stock: {v.sku}</Link>)}
+        <thead className="border-b bg-muted/50"><tr>{["SKU", "Options", "Barcode", "Price", "Unit cost", "Compare-at price", "Status"].map((label) => <th key={label} scope="col" className="p-4">{label}</th>)}</tr></thead>
+        <tbody>{p.variants.map((v) => <tr key={v.id} className="border-b last:border-0"><td className="p-4">{v.sku}</td><td className="p-4">{v.attributes.map((a) => `${a.name}: ${a.value}`).join(" · ") || "—"}</td><td className="p-4">{v.barcode || "—"}</td>
+          <td className="p-4 whitespace-nowrap">{v.currency} {(v.price / 100).toFixed(2)}</td><td className="p-4 whitespace-nowrap">{v.cost === null ? "—" : `${v.currency} ${(v.cost / 100).toFixed(2)}`}</td><td className="p-4 whitespace-nowrap">{v.compareAtPrice === null ? "—" : `${v.currency} ${(v.compareAtPrice / 100).toFixed(2)}`}</td><td className="p-4 capitalize">{v.status}</td></tr>)}
+          {!p.variants.length && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No variants yet.</td></tr>}</tbody></table></div>
+      {canWrite && p.status !== "archived" && managed.ok && <VariantForm attributes={attributes} productId={p.id} productSlug={p.slug} existingSkus={p.variants.map((v) => v.sku)} />}
+      {!managed.ok && <p role="alert">Attribute options unavailable. Refresh before editing variants.</p>}
+      {canWrite && p.status !== "archived" && managed.ok && p.variants.map((v) => <VariantForm key={v.id} variant={v} attributes={attributes} productId={p.id} productSlug={p.slug} existingSkus={p.variants.map((item) => item.sku)} />)}
+      {canWrite && p.status !== "archived" && p.variants.filter((v) => v.status === "active").map((v) => <Link key={v.id} className="mr-4 inline-block text-sm underline" href={`/admin/inventory/adjustments?variantId=${v.id}&type=PURCHASE`}>Receive stock: {v.sku}</Link>)}
       <Link className="inline-block text-sm underline" href="/admin/inventory">Open inventory</Link>
     </section>
     <section className="space-y-3"><h2 className="text-2xl">Images</h2>{p.images.length ? <ul className="grid gap-4 sm:grid-cols-2">{p.images.map((i) => <li key={i.id} className="flex items-start gap-4 rounded-xl border bg-card p-4">

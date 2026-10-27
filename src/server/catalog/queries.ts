@@ -39,7 +39,10 @@ export function productDetailQuery(identity: AuthSession, id: string) {
     (select ${productJson} || jsonb_build_object(
       'variants', coalesce((select jsonb_agg(jsonb_build_object('id', v.id, 'sku', v.sku,
         'barcode', v.barcode, 'price', v.price, 'compareAtPrice', v.compare_at_price,
-        'currency', v.currency, 'status', v.status) order by lower(v.sku), v.id)
+        'currency', v.currency, 'status', v.status, 'cost', v.cost,
+        'attributes', coalesce((select jsonb_agg(jsonb_build_object('id', av.id, 'attributeId', a.id, 'name', a.name, 'value', av.value) order by a.name, av.sort_order, av.id)
+          from product_attribute_values pav join attribute_values av on av.id=pav.attribute_value_id join attributes a on a.id=av.attribute_id
+          where pav.variant_id=v.id), '[]'::jsonb)) order by lower(v.sku), v.id)
         from product_variants v where v.product_id = p.id), '[]'::jsonb),
       'images', coalesce((select jsonb_agg(jsonb_build_object('id', i.id, 'variantId', i.variant_id,
         'blobUrl', i.blob_url, 'altText', i.alt_text, 'isPrimary', i.is_primary, 'sortOrder', i.sort_order)
