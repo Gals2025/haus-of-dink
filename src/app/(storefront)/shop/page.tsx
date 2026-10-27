@@ -1,24 +1,22 @@
 import { connection } from "next/server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import { getShop } from "@/server/commerce/guest";
-import { peso } from "@/server/commerce/contracts";
-export const metadata: Metadata = { title: "Shop" };
-async function Collection() {
+import { ShopCatalog } from "./shop-catalog";
+
+export const metadata: Metadata = {
+  title: "Shop pickleball paddles & accessories",
+  description: "Explore pickleball paddles and court essentials at Haus of Dink. Browse by category, compare prices, and order without an account.",
+};
+async function Collection({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   await connection();
-  const { items } = await getShop();
-  if (!items.length) return <p className="rounded-xl border p-8">Our collection is warming up. Check back soon.</p>;
-  return <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{items.map(item => <article key={item.id} className="space-y-3 rounded-2xl border bg-card p-6">
-    <h2 className="text-xl">{item.name}</h2><p className="text-sm text-muted-foreground">{item.sku}</p>
-    <p className="font-semibold">{peso(item.price)}</p>
-    {item.available > 0 ? <Link href={`/checkout?variant=${item.id}`} className="inline-block rounded-lg bg-primary px-4 py-2 text-primary-foreground">Order as guest</Link> : <p className="text-muted-foreground">Out of stock</p>}
-  </article>)}</div>;
+  const [{ items }, params] = await Promise.all([getShop(), searchParams]);
+  return <ShopCatalog key={typeof params.q === "string" ? params.q : ""} items={items} initialSearch={typeof params.q === "string" ? params.q.slice(0, 160) : ""} />;
 }
-export default function ShopPage() {
-  return <div className="mx-auto max-w-7xl space-y-8 px-6 py-16 lg:px-10">
-    <h1 className="text-5xl">Find your next favorite.</h1>
-    <p className="text-muted-foreground">Paddles and accessories for the way you play. Checkout without an account.</p>
-    <Suspense fallback={<p>Loading collection…</p>}><Collection /></Suspense>
+export default function ShopPage(props: { searchParams: Promise<{ q?: string }> }) {
+  return <div className="bg-[#f5f6f2] text-[#233421]">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10">
+      <Suspense fallback={<div aria-label="Loading shop" role="status" className="space-y-6"><div className="h-56 animate-pulse rounded-2xl bg-secondary" /><p>Loading your court essentials…</p><div className="grid grid-cols-2 gap-4 md:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-72 animate-pulse rounded-xl bg-white" />)}</div></div>}><Collection {...props} /></Suspense>
+    </div>
   </div>;
 }

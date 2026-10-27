@@ -13,4 +13,9 @@ export const guestInput = z.strictObject({
 }).refine(v => new Set(v.items.map(i => i.variantId)).size === v.items.length, "Combine duplicate items.");
 export type GuestInput = z.infer<typeof guestInput>;
 export type ShopItem = { id: string; name: string; sku: string; price: number; available: number };
+export type ShopCatalogItem = ShopItem & {
+  brand: string; category: string; description: string | null;
+  compareAtPrice: number | null; featured: boolean; newArrival: boolean;
+  imageUrl: string | null; imageAlt: string | null;
+};
 export type CheckoutResult = { ok: true; id: string; total: number } | { ok: false; error: string };

@@ -35,6 +35,26 @@ test("guest orders require no account, preserve contacts, reserve atomically and
       return (await tx.execute<{ id: string }>(guestWrite(request, data, rateKey))).rows[0]?.id;
     });
     const request = crypto.randomUUID();
+    await t.test("shop cards expose catalog metadata and prefer variant photos without duplicating stock", async () => {
+      const productId = f.data.variants[0]!.productId;
+      await db.insert(schema.productImages).values([
+        { productId, blobUrl: "https://example.test/product.jpg", altText: "Product photo", isPrimary: true },
+        { productId, variantId: vid, blobUrl: "https://example.test/variant.jpg", altText: "Variant photo", isPrimary: true },
+      ]);
+      const publicItems = await rows(shopQuery);
+      const item = publicItems.find(i => i.id === vid)!;
+      assert.equal(item.imageUrl, "https://example.test/variant.jpg");
+      assert.equal(item.imageAlt, "Variant photo");
+      assert.equal(item.available, 10);
+      assert.equal(publicItems.filter(i => i.id === vid).length, 1);
+      assert.equal(typeof item.brand, "string");
+      assert.equal(typeof item.category, "string");
+      assert.equal(typeof item.featured, "boolean");
+      assert.equal(typeof item.newArrival, "boolean");
+      assert.equal("cost" in item, false);
+      await db.execute(sql`delete from product_images where variant_id=${vid}::uuid`);
+      assert.equal((await rows(shopQuery)).find(i => i.id === vid)!.imageUrl, "https://example.test/product.jpg");
+    });
     await t.test("public projection excludes costs and prices are calculated by server", async () => {
       const publicItems = await rows(shopQuery);
       assert.ok(publicItems.length > 0); assert.equal("cost" in publicItems[0]!, false);
