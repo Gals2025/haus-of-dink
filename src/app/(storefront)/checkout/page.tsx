@@ -11,8 +11,8 @@ async function Checkout({ searchParams }: { searchParams: Promise<{ variant?: st
   return <CheckoutForm {...shop} selected={selected} />;
 }
 export default function CheckoutPage(props: { searchParams: Promise<{ variant?: string }> }) {
-  return <div className="mx-auto max-w-4xl space-y-6 px-6 py-12">
-    <h1 className="text-4xl">Guest checkout</h1>
+  return <div className="mx-auto max-w-4xl space-y-4 px-3 py-6 sm:space-y-6 sm:px-6 sm:py-12">
+    <h1 className="text-3xl sm:text-4xl">Guest checkout</h1>
     <p className="text-muted-foreground">Order without signing in or creating an account. We use your contact details to process your order and arrange delivery.</p>
     <Suspense fallback={<p>Loading checkout…</p>}><Checkout {...props} /></Suspense>
   </div>;

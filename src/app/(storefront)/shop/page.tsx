@@ -15,7 +15,7 @@ async function Collection({ searchParams }: { searchParams: Promise<{ q?: string
 }
 export default function ShopPage(props: { searchParams: Promise<{ q?: string }> }) {
   return <div className="bg-[#f5f6f2] text-[#233421]">
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10">
+    <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-10">
       <Suspense fallback={<div aria-label="Loading shop" role="status" className="space-y-6"><div className="h-56 animate-pulse rounded-2xl bg-secondary" /><p>Loading your court essentials…</p><div className="grid grid-cols-2 gap-4 md:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-72 animate-pulse rounded-xl bg-white" />)}</div></div>}><Collection {...props} /></Suspense>
     </div>
   </div>;

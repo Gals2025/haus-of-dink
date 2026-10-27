@@ -22,12 +22,12 @@ const collections = [
 export default function HomePage() {
   return (
     <>
-      <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:px-10 lg:py-24">
+      <section className="mx-auto grid max-w-7xl items-center gap-8 px-4 py-8 sm:gap-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-10 lg:py-24">
         <div>
           <Badge variant="outline" className="mb-7">
             THE NEXT CHAPTER STARTS HERE
           </Badge>
-          <h1 className="max-w-xl text-6xl font-normal leading-[1.02] tracking-tighter sm:text-7xl">
+          <h1 className="max-w-xl text-5xl font-normal min-[375px]:text-6xl leading-[1.02] tracking-tighter sm:text-7xl">
             Good gear.
             <br />
             Great games.
@@ -50,7 +50,7 @@ export default function HomePage() {
         </div>
         <div
           aria-hidden="true"
-          className="relative flex min-h-96 items-center justify-center overflow-hidden rounded-3xl bg-primary text-primary-foreground sm:min-h-[470px]"
+          className="relative flex min-h-64 items-center sm:min-h-96 justify-center overflow-hidden rounded-3xl bg-primary text-primary-foreground sm:min-h-[470px]"
         >
           <div className="absolute inset-8 rounded-t-full border border-primary-foreground/25" />
           <div className="absolute inset-x-0 top-1/2 border-t border-primary-foreground/25" />

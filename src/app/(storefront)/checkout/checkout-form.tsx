@@ -5,7 +5,7 @@ import { placeGuestOrder } from "./actions";
 import { peso } from "@/server/commerce/contracts";
 import type { CheckoutResult, ShopItem } from "@/server/commerce/guest-contracts";
 
-const field = "w-full rounded-lg border bg-background px-3 py-2";
+const field = "min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 py-2 text-base";
 export function CheckoutForm({ items, shipping, selected }: { items: ShopItem[]; shipping: number; selected?: string }) {
   const [quantities, setQuantities] = useState<Record<string, number>>(selected ? { [selected]: 1 } : {});
   const [result, setResult] = useState<CheckoutResult>();
@@ -34,15 +34,15 @@ export function CheckoutForm({ items, shipping, selected }: { items: ShopItem[];
     const request = attempt.current.request;
     start(async () => setResult(await placeGuestOrder(request, input)));
   }}>
-    <fieldset disabled={pending} className="space-y-6 disabled:opacity-60">
+    <fieldset disabled={pending} className="min-w-0 space-y-6 disabled:opacity-60">
       <legend className="mb-4 text-xl">Choose your items</legend>
       {items.length === 0 && <p>No products are available yet.</p>}
-      {items.map(item => <label key={item.id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4">
-        <span><strong>{item.name}</strong><span className="block text-sm text-muted-foreground">{item.sku} · {peso(item.price)} · {item.available ? `Up to ${item.available} available` : "Out of stock"}</span></span>
-        <span className="flex items-center gap-3">Quantity<input aria-label={`Quantity for ${item.name}, ${item.sku}`} type="number" min={0} max={item.available} step={1} value={quantities[item.id] ?? 0} disabled={!item.available} className={`${field} max-w-24`} onChange={e => setQuantities(v => ({ ...v, [item.id]: Number(e.target.value) }))} /></span>
+      {items.map(item => <label key={item.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border p-3 sm:p-4">
+        <span className="min-w-0 break-words"><strong>{item.name}</strong><span className="block text-sm text-muted-foreground">{item.sku} · {peso(item.price)} · {item.available ? `Up to ${item.available} available` : "Out of stock"}</span></span>
+        <span className="flex items-center gap-3">Quantity<input aria-label={`Quantity for ${item.name}, ${item.sku}`} type="number" inputMode="numeric" min={0} max={item.available} step={1} value={quantities[item.id] ?? 0} disabled={!item.available} className={`${field} max-w-24`} onChange={e => setQuantities(v => ({ ...v, [item.id]: Number(e.target.value) }))} /></span>
       </label>)}
       <h2 className="text-xl">Your contact and delivery details</h2>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid min-w-0 gap-4 [&>label]:min-w-0 sm:grid-cols-2">
         <label>Full name<input name="name" autoComplete="name" required maxLength={160} className={field} /></label>
         <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} className={field} /></label>
         <label>Contact number<input name="phone" type="tel" autoComplete="tel" required minLength={7} maxLength={40} className={field} /></label>
@@ -56,7 +56,7 @@ export function CheckoutForm({ items, shipping, selected }: { items: ShopItem[];
         <p className="text-sm">Prices, stock and promotions are checked when you place the order. The final total appears in your confirmation. Payment is arranged with the store after ordering.</p>
       </div>
       {result && !result.ok && <p role="alert" className="text-destructive">{result.error}</p>}
-      <button type="submit" disabled={pending || !count || count > 300} className="rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground disabled:opacity-50">{pending ? "Placing order…" : "Place guest order"}</button>
+      <button type="submit" disabled={pending || !count || count > 300} className="min-h-12 w-full rounded-lg bg-primary px-6 py-3 sm:w-auto font-medium text-primary-foreground disabled:opacity-50">{pending ? "Placing order…" : "Place guest order"}</button>
     </fieldset>
   </form>;
 }
