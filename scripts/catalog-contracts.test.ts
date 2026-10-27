@@ -1,47 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { productCreate, productUpdate, variantCreate, variantUpdate } from "../src/server/catalog/contracts";
-
-const brandId = "11111111-1111-4111-8111-111111111111";
-const categoryId = "22222222-2222-4222-8222-222222222222";
-const productId = "33333333-3333-4333-8333-333333333333";
-const validProduct = { name: "Pickleball paddle", slug: "pickleball-paddle", brandId, categoryId };
-const validVariant = { productId, sku: "HOD-PDL-001", price: 150000 };
-
-test("product validation accepts valid payloads and rejects invalid values", () => {
-  assert.equal(productCreate.parse(validProduct).status, "draft");
-  assert.equal(productCreate.safeParse({ ...validProduct, slug: "Bad Slug" }).success, false);
-  assert.equal(productCreate.safeParse({ ...validProduct, name: " " }).success, false);
-  assert.equal(productCreate.safeParse({ ...validProduct, brandId: "invalid" }).success, false);
-  assert.equal(productUpdate.safeParse({}).success, false);
-  assert.equal(productUpdate.safeParse({ featured: true }).success, true);
+import { createProductInput, updateProductInput, productFilters, normalizeSlug } from "../src/server/catalog/contracts";
+const valid = { name: "Paddle", slug: "  Café Paddle! ", brandId: crypto.randomUUID(), categoryId: crypto.randomUUID() };
+test("product contracts normalize slugs and default safe values", () => {
+  assert.equal(normalizeSlug(valid.slug), "cafe-paddle");
+  assert.deepEqual(createProductInput.parse(valid), { ...valid, slug: "cafe-paddle", status: "draft", featured: false, newArrival: false });
+  assert.equal(productFilters.parse({}).pageSize, 20);
+  for (const input of [{ ...valid, name: " " }, { ...valid, slug: "!" }, { ...valid, brandId: null },
+    { ...valid, categoryId: "bad" }, { ...valid, status: "published" }, { ...valid, featured: "yes" },
+    { ...valid, actorId: "forged" }, { ...valid, shortDescription: "x".repeat(501) }]) assert.equal(createProductInput.safeParse(input).success, false);
 });
-
-test("variant validation rejects invalid SKU, barcode, money and currency", () => {
-  assert.equal(variantCreate.parse(validVariant).currency, "PHP");
-  for (const change of [
-    { sku: " " }, { barcode: " " }, { price: -1 }, { price: 1.5 },
-    { price: 2147483648 }, { currency: "php" },
-    { compareAtPrice: 149999 }, { productId: "bad" },
-  ]) assert.equal(variantCreate.safeParse({ ...validVariant, ...change }).success, false);
-  assert.equal(variantUpdate.safeParse({}).success, false);
-});
-
-test("duplicate attribute values are rejected", () => {
-  assert.equal(variantCreate.safeParse({ ...validVariant, attributeValueIds: [brandId, brandId] }).success, false);
-  assert.equal(variantCreate.safeParse({ ...validVariant, attributeValueIds: [brandId, categoryId] }).success, true);
-});
-
-
-test("updates reject empty payloads and accept meaningful partial updates", () => {
-  assert.equal(productUpdate.safeParse({}).success, false);
-  assert.equal(productUpdate.safeParse({ featured: false }).success, true);
-  assert.equal(variantUpdate.safeParse({}).success, false);
-  assert.equal(variantUpdate.safeParse({ status: "inactive" }).success, true);
-});
-
-test("barcode rejects whitespace and untrimmed values", () => {
-  for (const barcode of ["", " ", " A123", "A123 "]) {
-    assert.equal(variantCreate.safeParse({ ...validVariant, barcode }).success, false);
+test("partial updates preserve omission and accept null only on descriptions", () => {
+  assert.deepEqual(updateProductInput.parse({}), {});
+  assert.deepEqual(updateProductInput.parse({ name: undefined, description: null }), { description: null });
+  for (const field of ["name", "slug", "brandId", "categoryId", "status", "featured", "newArrival"]) {
+    assert.equal(updateProductInput.safeParse({ [field]: null }).success, false);
   }
+  assert.equal(updateProductInput.safeParse({ role: "admin" }).success, false);
+  assert.equal(productFilters.safeParse({ sort: "name; drop table products" }).success, false);
+  assert.equal(productFilters.safeParse({ page: 0 }).success, false);
 });

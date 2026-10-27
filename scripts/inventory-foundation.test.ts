@@ -80,7 +80,7 @@ test("inventory foundation upgrades existing stock and enforces ledger reference
       assert.deepEqual((await client.query("SELECT * FROM inventory_balances")).rows, before);
       const row = (await client.query<{ source_location_id: string | null; destination_location_id: string }>("SELECT * FROM inventory_movements WHERE id=$1", [originalId])).rows[0]!;
       assert.equal(row.source_location_id, null); assert.equal(row.destination_location_id, location);
-      assert.equal((await client.query("SELECT * FROM drizzle.__drizzle_migrations")).rows.length, 7);
+      assert.equal((await client.query("SELECT * FROM drizzle.__drizzle_migrations")).rows.length, journal.entries.length);
     });
     await t.test("full reversal is atomic, idempotent and unique; history remains immutable", async () => {
       const request = crypto.randomUUID();
@@ -126,7 +126,8 @@ test("inventory foundation upgrades existing stock and enforces ledger reference
       await assert.rejects(db.insert(schema.inventoryReservations).values({ id: crypto.randomUUID(), variantId: variant, locationId: location, quantity: 1, remaining: 1, reference: " " }));
     });
     await t.test("latest snapshot produces no duplicate schema SQL on subsequent generation", async () => {
-      const current = await json(`${folder}/meta/0006_snapshot.json`);
+      const latest = journal.entries.at(-1)!;
+      const current = await json(`${folder}/meta/${String(latest.idx).padStart(4, "0")}_snapshot.json`);
       assert.deepEqual(await generateMigration(current, generateDrizzleJson(schema, current.id)), []);
     });
   } finally { await client.close(); await rm(temp, { recursive: true, force: true }); }

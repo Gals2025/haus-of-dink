@@ -15,7 +15,8 @@
     "db:test": "node --import tsx --test scripts/database.test.ts scripts/inventory-foundation.test.ts scripts/migration-history.test.ts",
     "auth:bootstrap": "node --import tsx scripts/bootstrap-super-admin.ts",
     "auth:test": "node --conditions=react-server --import tsx --test scripts/auth-database.test.ts scripts/authorization.test.ts scripts/admin-management.test.ts scripts/auth-http.test.ts scripts/password-reset.test.ts",
-    "inventory:test": "node --conditions=react-server --import tsx --test scripts/inventory.test.ts scripts/inventory-recovery.test.ts"
+    "inventory:test": "node --conditions=react-server --import tsx --test scripts/inventory.test.ts scripts/inventory-recovery.test.ts",
+    "catalog:test": "node --conditions=react-server --import tsx --test scripts/catalog-contracts.test.ts scripts/catalog-phase1.test.ts scripts/catalog-read.test.ts scripts/catalog-mutations.test.ts"
   },
   "dependencies": {
     "@fontsource/bodoni-moda": "^5.3.0",
