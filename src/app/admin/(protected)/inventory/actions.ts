@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { setReorderLevel } from "@/server/inventory/reorder";
 import { inventory } from "@/server/inventory/service";
 import { manualTypes, stockChange, type StockResult } from "@/server/inventory/contracts";
 
@@ -21,4 +22,12 @@ export async function recordStock(_previous: StockResult | null, form: FormData)
   } catch {
     return { ok: false, error: "Movement not confirmed. Check available stock and history before retrying. Opening stock must be the first movement. Keep the same request ID when retrying." };
   }
+}
+
+export async function saveReorderLevel(input: unknown) {
+  const result = await setReorderLevel(input);
+  if (result.ok) {
+    try { revalidatePath("/admin/inventory"); } catch { /* write already confirmed */ }
+  }
+  return result;
 }

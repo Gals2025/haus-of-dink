@@ -66,3 +66,15 @@ The one-time operator script `scripts/sql/reconcile-manual-migration-history-neo
 The user reported a successful production reconciliation on October 26, 2026; that report is not an automated live audit. Do not rerun this script on an already tracked database: it rejects an existing ledger. Keep its historical baseline fixed when adding future migrations. `scripts/migration-history.test.ts` validates both manual-install and partial-recovery paths in disposable PGlite databases, exact recorded migration hashes/timestamps, preservation of account/session/catalog data, compatibility with the normal migrator, and rejection of repeated execution, wrong database, schema drift or a missing stockroom.
 
 `npm run db:test` now also validates fresh installation, an upgrade preserving existing stock/history, migration reruns, snapshot generation, generated endpoints, reversal rollback/idempotency, reservation ownership, precision and historical deletion restrictions in disposable PGlite databases. It does not establish live-schema equivalence or multi-connection concurrency guarantees.
+
+## Reorder levels
+
+Inventory writers can edit the reorder level inline on each inventory row.
+The value applies to the selected SKU and location, defaults to 5, and accepts
+whole numbers from 0 through 1,000,000. Low stock means available quantity is
+at or below that level; zero remains a threshold, not an alert-disable switch.
+The setting preserves stock quantities and movement history. A SKU without a
+balance can be configured before receiving its opening stock. Changes recheck
+current write access under the shared management lock and write a catalog audit
+update atomically. Saving the same value produces no additional audit record.
+No new migration is required; the catalog audit migration must be installed.
