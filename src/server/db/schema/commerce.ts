@@ -29,7 +29,7 @@ export const orders = pgTable("orders", {
   shippingFee: integer("shipping_fee").notNull(), total: integer("total").notNull(),
   promotionId: uuid("promotion_id").references(() => promotions.id, { onDelete: "restrict" }),
   promotionCode: varchar("promotion_code", { length: 40 }), notes: varchar("notes", { length: 1000 }).notNull(),
-  actorId: text("actor_id").notNull().references(() => user.id, { onDelete: "restrict" }), ...dates(),
+  actorId: text("actor_id").references(() => user.id, { onDelete: "restrict" }), ...dates(),
 }, (t) => [index("orders_created_idx").on(t.createdAt, t.id), index("orders_customer_idx").on(t.customerId),
   check("orders_valid", sql`${t.status} IN ('pending','fulfilled','cancelled') AND ${t.paymentStatus} IN ('unpaid','paid','refunded') AND (${t.status} <> 'fulfilled' OR ${t.paymentStatus} = 'paid') AND (${t.status} <> 'cancelled' OR ${t.paymentStatus} <> 'paid') AND ${t.subtotal} >= 0 AND ${t.discount} >= 0 AND ${t.discount} <= ${t.subtotal} AND ${t.shippingFee} >= 0 AND ${t.total} = ${t.subtotal} - ${t.discount} + ${t.shippingFee}`)]);
 export const orderItems = pgTable("order_items", {
@@ -40,7 +40,7 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(), unitPrice: integer("unit_price").notNull(), unitCost: integer("unit_cost"),
 }, (t) => [index("order_items_order_idx").on(t.orderId), uniqueIndex("order_items_variant_unique").on(t.orderId, t.variantId), check("order_items_valid", sql`${t.quantity} BETWEEN 1 AND 1000000 AND ${t.unitPrice} >= 0 AND (${t.unitCost} IS NULL OR ${t.unitCost} >= 0)`)]);
 export const commerceAudit = pgTable("commerce_audit", {
-  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().unique(), actorId: text("actor_id").notNull(),
+  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().unique(), actorId: text("actor_id"),
   entityId: uuid("entity_id").notNull(), action: text("action").notNull(), payload: jsonb("payload").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("commerce_audit_created_idx").on(t.createdAt)]);

@@ -40,7 +40,7 @@ export const inventoryMovements = pgTable("inventory_movements", {
   reversalOfId: uuid("reversal_of_id"),
   reservationId: uuid("reservation_id").references(() => inventoryReservations.id, { onDelete: "restrict" }),
   reason: varchar("reason", { length: 500 }).notNull(), reference: varchar("reference", { length: 200 }).default("").notNull(),
-  actorId: text("actor_id").notNull().references(() => user.id, { onDelete: "restrict" }),
+  actorId: text("actor_id").references(() => user.id, { onDelete: "restrict" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [foreignKey({ columns: [t.variantId, t.locationId], foreignColumns: [inventoryBalances.variantId, inventoryBalances.locationId] }).onDelete("restrict"),
   foreignKey({ name: "inventory_movement_reservation_balance_fk", columns: [t.reservationId, t.variantId, t.locationId], foreignColumns: [inventoryReservations.id, inventoryReservations.variantId, inventoryReservations.locationId] }).onDelete("restrict"),

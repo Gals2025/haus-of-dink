@@ -39,9 +39,9 @@ export function movementsQuery(identity: AuthSession, filters: StockFilters) {
   const search = `%${filters.search.replace(/[\\%_]/g, "\\$&")}%`;
   return sql`select m.id, v.sku, l.name as location, m.type, m.quantity,
     m.before_on_hand as "beforeOnHand", m.after_on_hand as "afterOnHand", m.before_reserved as "beforeReserved",
-    m.after_reserved as "afterReserved", m.reason, m.reference, u.name as actor, m.created_at::text as "createdAt"
+    m.after_reserved as "afterReserved", m.reason, m.reference, coalesce(u.name, 'Guest checkout') as actor, m.created_at::text as "createdAt"
     from inventory_movements m join product_variants v on v.id = m.variant_id
-    join inventory_locations l on l.id = m.location_id join "user" u on u.id = m.actor_id
+    join inventory_locations l on l.id = m.location_id left join "user" u on u.id = m.actor_id
     where m.location_id = ${filters.locationId}::uuid and exists (${actor(identity, "inventory:read")})
     and (${filters.search === ""} or v.sku ilike ${search} or m.reference ilike ${search})
     order by m.created_at desc, m.id desc limit ${pageSize + 1} offset ${(filters.page - 1) * pageSize}`;

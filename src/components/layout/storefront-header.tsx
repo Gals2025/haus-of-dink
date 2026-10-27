@@ -13,6 +13,7 @@ export function StorefrontHeader() {
           <Link href="/shop" className="hover:text-primary">
             Shop
           </Link>
+          <Link href="/checkout" className="hover:text-primary">Guest checkout</Link>
         </nav>
       </div>
     </header>

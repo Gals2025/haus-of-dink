@@ -28,7 +28,7 @@ export function orderDetailQuery(identity: AuthSession, id: string) {
     select o.id,o.customer_snapshot->>'name' as customer,o.customer_snapshot as "customerSnapshot",o.status,o.payment_status as "paymentStatus",
       o.subtotal,o.discount,o.shipping_fee as "shippingFee",o.total,o.created_at::text as "createdAt",o.promotion_code as "promotionCode",o.payment_reference as "paymentReference",o.notes,l.name as location,
       (select jsonb_agg(jsonb_build_object('sku',i.sku,'name',i.name,'quantity',i.quantity,'unitPrice',i.unit_price) order by i.sku) from order_items i where i.order_id=o.id) as items,
-      coalesce((select jsonb_agg(jsonb_build_object('action',a.action,'createdAt',a.created_at,'actor',coalesce(u.name,'Former account')) order by a.created_at,a.id)
+      coalesce((select jsonb_agg(jsonb_build_object('action',a.action,'createdAt',a.created_at,'actor',coalesce(u.name,case when a.actor_id is null then 'Guest checkout' else 'Former account' end)) order by a.created_at,a.id)
         from commerce_audit a left join "user" u on u.id=a.actor_id where a.entity_id=o.id),'[]'::jsonb) as history
     from orders o join inventory_locations l on l.id=o.location_id where o.id=${id}::uuid and exists(select 1 from actor)`;
 }
