@@ -3,6 +3,8 @@ import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import { listProducts, listProductOptions } from "@/server/catalog/service";
 import { parseProductSearch, productPageHref } from "@/server/catalog/admin-input";
 
+import { OptionCreator } from "./option-creator";
+
 const control = "mt-1 block w-full rounded-md border bg-background p-2";
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const identity = await requirePermission("inventory:read");
@@ -16,6 +18,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs tracking-widest text-primary">HAUS OF DINK / CATALOG</p>
       <h1 className="mt-3 text-4xl">Products</h1><p className="mt-3 text-muted-foreground">Manage your catalog. Stock quantities remain in Inventory.</p></div>
       {canWrite && <Link href="/admin/products/new" className="rounded-md bg-primary px-4 py-3 text-sm text-primary-foreground">Create product</Link>}</header>
+    {canWrite && <div className="grid max-w-3xl gap-4 sm:grid-cols-2"><OptionCreator kind="brand" /><OptionCreator kind="category" /></div>}
     {!parsed.success && <p role="alert" className="text-sm text-destructive">Invalid filters. Showing the first page with default filters.</p>}
     {!options.ok && <p role="alert" className="text-sm text-destructive">Brand and category filters are temporarily unavailable.</p>}
     <form action="/admin/products" className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 xl:grid-cols-4">

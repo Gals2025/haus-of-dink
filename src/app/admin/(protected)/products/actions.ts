@@ -1,4 +1,5 @@
 "use server";
+import { createCatalogOption } from "@/server/catalog/option-mutations";
 import { revalidatePath } from "next/cache";
 import { getPermissionSession } from "@/server/auth/authorize";
 import { createProduct, updateProduct, archiveProduct, reactivateProduct } from "@/server/catalog/mutations";
@@ -17,3 +18,11 @@ export async function createCatalogProduct(input: unknown) { return actions.crea
 export async function updateCatalogProduct(id: unknown, input: unknown) { return actions.update(id, input); }
 export async function archiveCatalogProduct(id: unknown) { return actions.archive(id); }
 export async function reactivateCatalogProduct(id: unknown) { return actions.reactivate(id); }
+
+export async function createProductOption(kind: unknown, input: unknown) {
+  const result = await createCatalogOption(kind, input);
+  if (result.ok) {
+    try { revalidatePath("/admin/products", "layout"); } catch { /* creation already committed */ }
+  }
+  return result;
+}

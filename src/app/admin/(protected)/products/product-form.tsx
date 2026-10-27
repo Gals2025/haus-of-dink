@@ -7,6 +7,8 @@ import { changedProductFields } from "@/server/catalog/admin-input";
 import type { ProductOptions } from "@/server/catalog/service";
 import { createCatalogProduct, updateCatalogProduct } from "./actions";
 
+import { OptionCreator } from "./option-creator";
+
 const control = "mt-1 block w-full rounded-md border bg-background p-3 disabled:opacity-60";
 export function ProductForm({ product, options }: { product?: Product; options: ProductOptions }) {
   const router = useRouter();
@@ -14,6 +16,10 @@ export function ProductForm({ product, options }: { product?: Product; options: 
     name: product.name, slug: product.slug, description: product.description, shortDescription: product.shortDescription,
     brandId: product.brandId, categoryId: product.categoryId, status: product.status, featured: product.featured, newArrival: product.newArrival,
   } : { name: "", slug: "", description: null, shortDescription: null, brandId: "", categoryId: "", status: "draft", featured: false, newArrival: false };
+  const [addedBrands, setAddedBrands] = useState<ProductOptions["brands"]>([]);
+  const [addedCategories, setAddedCategories] = useState<ProductOptions["categories"]>([]);
+  const brands = [...options.brands, ...addedBrands.filter((b) => !options.brands.some((o) => o.id === b.id))].sort((a, b) => a.name.localeCompare(b.name));
+  const categories = [...options.categories, ...addedCategories.filter((c) => !options.categories.some((o) => o.id === c.id))].sort((a, b) => a.name.localeCompare(b.name));
   const [values, setValues] = useState(initial);
   const [slugEdited, setSlugEdited] = useState(Boolean(product));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -41,7 +47,7 @@ export function ProductForm({ product, options }: { product?: Product; options: 
       } catch { setMessage("Save not confirmed. Refresh and check the product before retrying."); }
     });
   }
-  const missingOptions = !options.brands.length || !options.categories.length;
+  const missingOptions = !brands.length || !categories.length;
   return <form onSubmit={submit} className="max-w-3xl space-y-6 rounded-xl border bg-card p-5 sm:p-8">
     {missingOptions && <p role="alert" className="text-sm text-destructive">A brand and category must exist before a product can be saved.</p>}
     <fieldset disabled={pending || saved} className="space-y-5 disabled:opacity-70">
@@ -52,10 +58,10 @@ export function ProductForm({ product, options }: { product?: Product; options: 
         onChange={(e) => { setSlugEdited(true); set("slug", e.target.value); }} onBlur={() => set("slug", normalizeSlug(values.slug))} />
         <span className="mt-1 block text-xs text-muted-foreground">Lowercase words separated by hyphens. Slugs must be unique.</span>{error("slug")}</label>
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="text-sm">Brand<select name="brandId" required value={values.brandId} onChange={(e) => set("brandId", e.target.value)} {...accessibility("brandId")} className={control}>
-          <option value="">Select brand</option>{options.brands.map((b) => <option key={b.id} value={b.id}>{b.name}{b.status !== "active" ? " (inactive)" : ""}</option>)}</select>{error("brandId")}</label>
-        <label className="text-sm">Category<select name="categoryId" required value={values.categoryId} onChange={(e) => set("categoryId", e.target.value)} {...accessibility("categoryId")} className={control}>
-          <option value="">Select category</option>{options.categories.map((c) => <option key={c.id} value={c.id}>{c.name}{c.status !== "active" ? " (inactive)" : ""}</option>)}</select>{error("categoryId")}</label>
+        <div className="space-y-2"><label className="text-sm">Brand<select name="brandId" required value={values.brandId} onChange={(e) => set("brandId", e.target.value)} {...accessibility("brandId")} className={control}>
+          <option value="">Select brand</option>{brands.map((b) => <option key={b.id} value={b.id}>{b.name}{b.status !== "active" ? " (inactive)" : ""}</option>)}</select>{error("brandId")}</label><OptionCreator kind="brand" onCreated={(option) => { setAddedBrands((old) => [...old, option]); set("brandId", option.id); }} /></div>
+        <div className="space-y-2"><label className="text-sm">Category<select name="categoryId" required value={values.categoryId} onChange={(e) => set("categoryId", e.target.value)} {...accessibility("categoryId")} className={control}>
+          <option value="">Select category</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}{c.status !== "active" ? " (inactive)" : ""}</option>)}</select>{error("categoryId")}</label><OptionCreator kind="category" onCreated={(option) => { setAddedCategories((old) => [...old, option]); set("categoryId", option.id); }} /></div>
       </div>
       <label className="block text-sm">Short description<textarea name="shortDescription" maxLength={500} rows={3} value={values.shortDescription ?? ""} onChange={(e) => set("shortDescription", e.target.value || null)} {...accessibility("shortDescription")} className={control} />{error("shortDescription")}</label>
       <label className="block text-sm">Description<textarea name="description" maxLength={20000} rows={7} value={values.description ?? ""} onChange={(e) => set("description", e.target.value || null)} {...accessibility("description")} className={control} />{error("description")}</label>
