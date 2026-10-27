@@ -5,13 +5,13 @@ import { eq } from "drizzle-orm";
 import { requirePermission, currentPermissionSessionConditions } from "@/server/auth/authorize";
 import { getDb } from "@/server/db";
 import { productVariants, inventoryLocations, session, user } from "@/server/db/schema";
-import { mainLocationId } from "@/server/inventory/contracts";
+import { mainLocationId, manualTypes } from "@/server/inventory/contracts";
 import { StockForm } from "../stock-form";
 
 export default async function AdjustmentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const identity = await requirePermission("inventory:write");
   const params = await searchParams;
-  const parsed = z.object({ variantId: z.uuid(), locationId: z.uuid().default(mainLocationId) }).safeParse(params);
+  const parsed = z.object({ variantId: z.uuid(), locationId: z.uuid().default(mainLocationId), type: z.enum(manualTypes).default("OPENING_STOCK") }).safeParse(params);
   if (!parsed.success) return <p>Select a SKU from <Link className="underline" href="/admin/inventory">inventory</Link> to record a movement.</p>;
   // Check current access for catalog identifiers too; never accept a caller's SKU label.
   const db = getDb();
@@ -23,6 +23,6 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
   const requestId = randomUUID();
   return <div className="space-y-6"><Link className="text-sm underline" href={`/admin/inventory?locationId=${location.id}`}>Back to inventory</Link>
     <div><h1 className="text-4xl">Record stock movement</h1><p className="mt-3 text-muted-foreground">{location.name} · Enter the quantity moved, rather than a replacement balance.</p></div>
-    <StockForm key={`${parsed.data.variantId}/${location.id}`} variantId={parsed.data.variantId} locationId={location.id} sku={variant.sku} requestId={requestId} />
+    <StockForm key={`${parsed.data.variantId}/${location.id}`} variantId={parsed.data.variantId} locationId={location.id} sku={variant.sku} initialType={parsed.data.type} requestId={requestId} />
   </div>;
 }

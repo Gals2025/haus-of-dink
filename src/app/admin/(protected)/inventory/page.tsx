@@ -25,8 +25,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       <tbody>{rows.map((row) => <tr key={row.variantId} className="border-b last:border-0"><td className="p-4"><p className="font-medium">{row.name}</p><p className="mt-1 text-xs text-muted-foreground">{row.sku}</p></td>
         <td className="p-4 tabular-nums">{row.onHand}</td><td className="p-4 tabular-nums">{row.reserved}</td>
         <td className="p-4 tabular-nums"><span className={row.available <= row.reorderLevel ? "font-semibold text-destructive" : ""}>{row.available}</span>{row.available === 0 ? <span className="ml-2 text-xs">Out of stock</span> : row.available <= row.reorderLevel ? <span className="ml-2 text-xs">Low stock</span> : null}</td>
-        <td className="p-4 tabular-nums">{row.reorderLevel}</td><td className="p-4">{hasPermission(identity.staff.role, "inventory:write") && <Link className="whitespace-nowrap underline underline-offset-4" href={`/admin/inventory/adjustments?variantId=${row.variantId}&locationId=${filters.locationId}`}>Record movement</Link>}</td></tr>)}
-        {rows.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No matching SKUs. Inventory uses your existing catalog variants.</td></tr>}</tbody></table></div>
+        <td className="p-4 tabular-nums">{row.reorderLevel}</td><td className="p-4">{hasPermission(identity.staff.role, "inventory:write") && <Link className="whitespace-nowrap underline underline-offset-4" href={`/admin/inventory/adjustments?variantId=${row.variantId}&locationId=${filters.locationId}&type=PURCHASE`}>Receive stock / record movement</Link>}</td></tr>)}
+        {rows.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No matching SKUs. Clear filters to check other items. For a new product, open Products, select the product and add a SKU before receiving stock.</td></tr>}</tbody></table></div>
     <nav aria-label="Inventory pages" className="flex gap-4 text-sm">{filters.page > 1 && <Link href={link(filters.page - 1)}>Previous</Link>}<span>Page {filters.page}</span>{hasMore && <Link href={link(filters.page + 1)}>Next</Link>}</nav>
+    {hasPermission(identity.staff.role, "inventory:write") && <Link href="/admin/products" className="inline-block text-sm underline">Open products to add a SKU</Link>}
   </div>;
 }

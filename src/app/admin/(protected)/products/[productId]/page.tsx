@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import { getProductDetail, listProductOptions } from "@/server/catalog/service";
+import { VariantForm } from "../variant-form";
 import { ProductStatusControls } from "../status-controls";
 
 export default async function ProductPage({ params, searchParams }: {
@@ -32,12 +33,14 @@ export default async function ProductPage({ params, searchParams }: {
       <div><h2 className="font-medium">Short description</h2><p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{p.shortDescription || "No short description."}</p></div>
       <div><h2 className="font-medium">Description</h2><p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{p.description || "No description."}</p></div>
     </section>
-    <section className="space-y-3"><h2 className="text-2xl">Variants</h2><p className="text-sm text-muted-foreground">Existing variants are shown for reference. Manage stock from Inventory.</p>
+    <section className="space-y-3"><h2 className="text-2xl">Variants</h2><p className="text-sm text-muted-foreground">Each SKU tracks its own stock. Add a SKU, then receive its opening stock or deliveries.</p>
       <div className="overflow-x-auto rounded-xl border bg-card"><table className="w-full text-left text-sm"><caption className="sr-only">Existing product variants</caption>
         <thead className="border-b bg-muted/50"><tr>{["SKU", "Barcode", "Price", "Compare-at price", "Status"].map((label) => <th key={label} scope="col" className="p-4">{label}</th>)}</tr></thead>
         <tbody>{p.variants.map((v) => <tr key={v.id} className="border-b last:border-0"><td className="p-4">{v.sku}</td><td className="p-4">{v.barcode || "—"}</td>
           <td className="p-4 whitespace-nowrap">{v.currency} {(v.price / 100).toFixed(2)}</td><td className="p-4 whitespace-nowrap">{v.compareAtPrice === null ? "—" : `${v.currency} ${(v.compareAtPrice / 100).toFixed(2)}`}</td><td className="p-4 capitalize">{v.status}</td></tr>)}
           {!p.variants.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No variants yet.</td></tr>}</tbody></table></div>
+      {canWrite && p.status !== "archived" && <VariantForm productId={p.id} />}
+      {canWrite && p.variants.map((v) => <Link key={v.id} className="mr-4 inline-block text-sm underline" href={`/admin/inventory/adjustments?variantId=${v.id}&type=PURCHASE`}>Receive stock: {v.sku}</Link>)}
       <Link className="inline-block text-sm underline" href="/admin/inventory">Open inventory</Link>
     </section>
     <section className="space-y-3"><h2 className="text-2xl">Images</h2>{p.images.length ? <ul className="grid gap-4 sm:grid-cols-2">{p.images.map((i) => <li key={i.id} className="flex items-start gap-4 rounded-xl border bg-card p-4">

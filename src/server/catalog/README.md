@@ -135,3 +135,22 @@ errors and successful action→service→SQL operations in isolated PGlite. A
 separate explicitly labeled unit test covers cache-refresh failure handling.
 The browser flows still require signed-in verification in a configured
 application; the local test runner does not substitute for that check.
+
+
+## SKU setup and stock receipts
+
+On a product detail page, inventory writers can add a SKU with a PHP selling
+price, optional barcode, unit cost and compare-at price. Simple products need
+one SKU; separate colors/sizes can have distinct SKUs. Attribute assignment is
+not part of this form. Archived products must be reactivated first.
+
+SKU creation validates the existing variant contract, rechecks current access
+under the management lock and inserts a catalog audit update atomically.
+Duplicate SKUs (case insensitive) and barcodes are rejected. It does not change
+stock. No additional migration is needed beyond the existing catalog audit.
+
+Use Receive stock on the product page or inventory row to record a purchase.
+Choose Opening stock for items already on hand. Both use the existing inventory
+ledger and request identifiers; retrying a receipt cannot add stock twice.
+The variant integration test creates a product, adds its SKU, confirms its zero
+balance, receives a delivery, retries it, and checks authorization and rollback.
