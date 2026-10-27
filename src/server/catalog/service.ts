@@ -2,15 +2,25 @@ import "server-only";
 import type { SQL } from "drizzle-orm";
 import { getPermissionSession } from "@/server/auth/authorize";
 import { getDb } from "@/server/db";
-import { productFilters, productId, errors, type Product, type ProductDetail, type ListResult, type DetailResult } from "./contracts";
-import { listProductsQuery, productDetailQuery } from "./queries";
+import { productFilters, productId, errors, type Product, type ProductDetail, type ListResult, type DetailResult, type Failure } from "./contracts";
+import { listProductsQuery, productDetailQuery, productOptionsQuery } from "./queries";
 
 export type CatalogStorage = {
   authorize: typeof getPermissionSession;
   read: <T extends Record<string, unknown>>(query: SQL) => Promise<T[]>;
 };
+export type ProductOptions = { brands: { id: string; name: string; status: string }[]; categories: { id: string; name: string; status: string }[] };
 export function createCatalogReads(deps: CatalogStorage) {
   return {
+    async listProductOptions(): Promise<({ ok: true } & ProductOptions) | Failure> {
+      try {
+        const identity = await deps.authorize("inventory:read");
+        if (!identity) return errors.FORBIDDEN;
+        const [row] = await deps.read<ProductOptions & { authorized: boolean }>(productOptionsQuery(identity));
+        if (!row?.authorized) return errors.FORBIDDEN;
+        return { ok: true, brands: row.brands, categories: row.categories };
+      } catch { return errors.UNAVAILABLE; }
+    },
     async listProducts(input: unknown = {}): Promise<ListResult> {
       try {
         const identity = await deps.authorize("inventory:read");
@@ -37,7 +47,7 @@ export function createCatalogReads(deps: CatalogStorage) {
     },
   };
 }
-export const { listProducts, getProductDetail } = createCatalogReads({
+export const { listProducts, getProductDetail, listProductOptions } = createCatalogReads({
   authorize: getPermissionSession,
   read: async <T extends Record<string, unknown>>(query: SQL) => (await getDb().execute<T>(query)).rows,
 });

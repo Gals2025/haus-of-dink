@@ -35,6 +35,7 @@ export default async function AdminLayout({
               <LayoutDashboard aria-hidden="true" className="size-4" />
               Overview
             </AdminNavLink>
+            {hasPermission(identity.staff.role, "inventory:read") && <AdminNavLink href="/admin/products">Products</AdminNavLink>}
             {hasPermission(identity.staff.role, "inventory:read") && <AdminNavLink href="/admin/inventory">Inventory</AdminNavLink>}
             {hasPermission(identity.staff.role, "users:read") && <AdminNavLink href="/admin/users">People & access</AdminNavLink>}
             {hasPermission(identity.staff.role, "audit:read") && <AdminNavLink href="/admin/audit">Access history</AdminNavLink>}

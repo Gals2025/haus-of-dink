@@ -6,12 +6,14 @@ cannot bypass runtime validation. All results use `{ ok: true, ... }` or
 
 - `listProducts(input?: unknown): Promise<ListResult>`
 - `getProductDetail(id: unknown): Promise<DetailResult>`
+- `listProductOptions()`: permission-protected brand/category option DTOs
 - `createProduct(input: unknown): Promise<MutationResult>`
 - `updateProduct(productId: unknown, input: unknown): Promise<MutationResult>`
 - `archiveProduct(productId: unknown): Promise<MutationResult>`
 - `reactivateProduct(productId: unknown): Promise<MutationResult>`
 
-No HTTP routes, Server Actions, admin UI or variant mutations are added.
+Staff pages and Server Actions are described in the Phase 3 section below.
+Public HTTP mutation routes and variant mutations are not exposed.
 
 ## Contracts and reads
 
@@ -94,3 +96,42 @@ PGlite's serialized transaction adapter, not separate concurrent PostgreSQL
 connections. Multi-connection Neon HTTP batch/locking behavior remains unverified
 until a separately provisioned isolated database is available. Never substitute
 a production connection for that test target.
+
+## Phase 3 admin interface
+
+- `/admin/products`: searchable/filterable list, deterministic sorting, 20-row
+  pages and total counts; query-string filters survive pagination.
+- `/admin/products/new`: permission-protected create form, default draft,
+  automatic/editable slug, database-backed brand/category choices.
+- `/admin/products/[productId]`: detail with read-only variants and images,
+  success feedback, confirmed archive/reactivate operations.
+- `/admin/products/[productId]/edit`: editable fields and explicit null clearing
+  of descriptions; sends only changed fields to preserve other editors' work.
+
+All pages require inventory:read; create/edit pages require inventory:write.
+The navigation and write controls follow the current database-backed role.
+Server Actions authorize independently of page rendering, then call the Phase
+2B services, which recheck the session and role again at the SQL boundary.
+Brand/category option reads also recheck inventory:read inside their query.
+No raw identity, token, account or role data is passed to client components.
+
+Pending states disable repeated submission, errors retain entered form values,
+and successful writes refresh product and stock pages. Archive/reactivate use
+an explicit confirmation step. Reactivation restores draft, without publication.
+An archived product's edit form keeps status locked; use its detail action to
+reactivate it. Product descriptions render as text. Client-side validation is
+convenience only; services validate every submitted payload independently.
+A cache-refresh failure after a confirmed write retains the successful result
+to avoid inviting a duplicate create; the client also navigates/refreshes.
+
+The existing inventory and user/access screens are unchanged. Products appears
+as its own workspace module with the existing selected-navigation behavior.
+There are no image uploads, variant mutations, brand/category mutations,
+storefront changes, new migrations, or automatic migration commands in this UI.
+
+`catalog-admin.test.ts` covers query parsing and pagination preservation, partial
+edit payloads, permission-gated actions, current option-read authorization, safe
+errors and successful action→service→SQL operations in isolated PGlite. A
+separate explicitly labeled unit test covers cache-refresh failure handling.
+The browser flows still require signed-in verification in a configured
+application; the local test runner does not substitute for that check.

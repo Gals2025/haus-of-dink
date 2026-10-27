@@ -46,3 +46,12 @@ export function productDetailQuery(identity: AuthSession, id: string) {
         order by i.sort_order, i.id) from product_images i where i.product_id = p.id), '[]'::jsonb))
     from products p where p.id = ${id}::uuid and exists(select 1 from actor)) as product`;
 }
+
+export function productOptionsQuery(identity: AuthSession) {
+  return sql`with actor as materialized (${catalogActor(identity, "inventory:read")})
+    select exists(select 1 from actor) as authorized,
+      coalesce((select jsonb_agg(jsonb_build_object('id', b.id, 'name', b.name, 'status', b.status) order by lower(b.name), b.id)
+        from brands b where exists(select 1 from actor)), '[]'::jsonb) as brands,
+      coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'status', c.status) order by lower(c.name), c.id)
+        from categories c where exists(select 1 from actor)), '[]'::jsonb) as categories`;
+}
