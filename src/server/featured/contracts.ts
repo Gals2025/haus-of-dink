@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-const imageUrl = z.string().trim().max(2000).refine(
-  (value) => value === "" || (z.url().safeParse(value).success && value.startsWith("https://")),
+const imageUrl = z.union([z.string().trim().max(2000), z.null()]).refine(
+  (value) => value === null || value === "" || (z.url().safeParse(value).success && value.startsWith("https://")),
   "Image URL must use HTTPS.",
 ).transform((value) => value || null);
 
