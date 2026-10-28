@@ -47,7 +47,7 @@ export function FeaturedCarousel({ items }: { items: FeaturedItem[] }) {
             <span className="featured-eyebrow">{slide.eyebrow || "FEATURED"}</span>
             <h3>{slide.title}</h3>
             <p>{slide.description}</p>
-            <Link href={slide.href} className="featured-cta">{slide.ctaLabel}<ArrowRight aria-hidden="true" className="size-4" /></Link>
+            {slide.ctaLabel && slide.href && <Link href={slide.href} className="featured-cta">{slide.ctaLabel}<ArrowRight aria-hidden="true" className="size-4" /></Link>}
           </div>
           <div
             className={`featured-art${slide.imageUrl ? " has-image" : ""}`}
