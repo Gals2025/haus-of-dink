@@ -12,9 +12,10 @@ export const featuredItemsInput = z.array(z.strictObject({
   description: z.string().trim().max(500),
   imageUrl,
   imageAlt: z.string().trim().max(240),
-  ctaLabel: z.string().trim().min(1).max(80),
-  href: z.string().trim().min(1).max(500).regex(/^\/(?!\/)/, "Use an internal store link beginning with /.")
-    .refine((value) => !/[\u0000-\u001f\u007f]/.test(value), "Link contains invalid characters."),
+  ctaLabel: z.string().trim().max(80),
+  href: z.string().trim().max(500)
+    .refine((value) => value === "" || (value.startsWith("/") && !value.startsWith("//")), "Use an internal store link beginning with /.")
+    .refine((value) => value === "" || !/[\u0000-\u001f\u007f]/.test(value), "Link contains invalid characters."),
   active: z.boolean(),
 })).length(3).refine((items) => new Set(items.map((item) => item.slot)).size === 3, "Configure each of the three featured slots once.");
 
