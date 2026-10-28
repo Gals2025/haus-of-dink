@@ -52,8 +52,28 @@ export async function saveFeaturedItems(input: unknown): Promise<{ ok: true } | 
     if (!row?.authorized) return { ok: false, error: "Your access changed. Refresh and sign in again." };
     if (row.saved !== 3) return { ok: false, error: "All three featured slots must be saved. Refresh and try again." };
     return { ok: true };
-  } catch {
-    return { ok: false, error: "Unable to save featured content. Check the links and image URLs, then retry." };
+  } catch (error) {
+    const databaseError = error && typeof error === "object" ? error as { code?: unknown; constraint?: unknown; message?: unknown } : {};
+    const code = typeof databaseError.code === "string" ? databaseError.code : undefined;
+    const constraint = typeof databaseError.constraint === "string" ? databaseError.constraint : undefined;
+    console.error("Featured content save failed", {
+      code,
+      constraint,
+      message: typeof databaseError.message === "string" ? databaseError.message : "Unknown database error",
+    });
+
+    if (constraint === "featured_items_image_https") {
+      return { ok: false, error: "Use an HTTPS image URL from Vercel Blob. Social media post links are not direct image URLs." };
+    }
+    if (constraint === "featured_items_internal_href") {
+      return { ok: false, error: "Use an internal store link beginning with /, such as /shop." };
+    }
+    if (code === "42P01" || code === "42703") {
+      return { ok: false, error: "The production database is missing part of the Featured content migration. Check migration 0011_featured_content." };
+    }
+    return { ok: false, error: code
+      ? `Featured content could not be saved (database error ${code}). Refresh the page and retry; if it continues, contact support with this code.`
+      : "Featured content could not be saved because of a database error. Refresh the page and retry." };
   }
 }
 
