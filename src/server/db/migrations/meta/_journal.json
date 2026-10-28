@@ -85,6 +85,13 @@
       "when": 1793167214099,
       "tag": "0011_featured_content",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793170000000,
+      "tag": "0012_featured_optional_cta",
+      "breakpoints": true
     }
   ]
 }
