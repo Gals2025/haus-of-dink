@@ -2,7 +2,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { upload } from "@vercel/blob/client";
 import type { FeaturedItem } from "@/server/featured/contracts";
 import { saveFeaturedItems } from "./actions";
 
@@ -27,11 +26,22 @@ export function FeaturedEditor({ items, canWrite }: { items: FeaturedItem[]; can
     }
     setUploading(slot);
     try {
-      const blob = await upload(`featured/${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/featured/upload",
+      const authorization = await fetch("/api/admin/featured/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentType: file.type, size: file.size }),
       });
-      change(slot, "imageUrl", blob.url);
+      const uploadDetails = await authorization.json() as { uploadUrl?: string; imageUrl?: string; error?: string };
+      if (!authorization.ok || !uploadDetails.uploadUrl || !uploadDetails.imageUrl) {
+        throw new Error(uploadDetails.error || "Could not prepare the image upload.");
+      }
+      const uploaded = await fetch(uploadDetails.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploaded.ok) throw new Error("Vercel Blob could not store the image. Check the Blob store configuration and try again.");
+      change(slot, "imageUrl", uploadDetails.imageUrl);
       change(slot, "imageAlt", file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
       setMessage(`Image uploaded for slide ${slot}. Save featured content to publish it.`);
     } catch (error) {
