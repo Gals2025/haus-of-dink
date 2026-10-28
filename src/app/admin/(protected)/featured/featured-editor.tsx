@@ -51,8 +51,8 @@ export function FeaturedEditor({ items, canWrite }: { items: FeaturedItem[]; can
           <label className="sm:col-span-2">Description<textarea className={field} rows={2} maxLength={500} value={slide.description} onChange={(event) => change(slide.slot, "description", event.target.value)} /></label>
           <label className="sm:col-span-2">Image URL (HTTPS)<input className={field} type="url" maxLength={2000} value={slide.imageUrl ?? ""} onChange={(event) => change(slide.slot, "imageUrl", event.target.value || null)} placeholder="https://… (optional)" /></label>
           <label>Image description for accessibility<input className={field} maxLength={240} value={slide.imageAlt} onChange={(event) => change(slide.slot, "imageAlt", event.target.value)} /></label>
-          <label>Button label<input required className={field} maxLength={80} value={slide.ctaLabel} onChange={(event) => change(slide.slot, "ctaLabel", event.target.value)} /></label>
-          <label className="sm:col-span-2">Store link<input required className={field} maxLength={500} value={slide.href} onChange={(event) => change(slide.slot, "href", event.target.value)} placeholder="/shop" /><span className="mt-1 block text-xs text-muted-foreground">Use an internal path beginning with /, such as /shop or /shop?category=paddles.</span></label>
+          <label>Button label (optional)<input className={field} maxLength={80} value={slide.ctaLabel} onChange={(event) => change(slide.slot, "ctaLabel", event.target.value)} /></label>
+          <label className="sm:col-span-2">Store link (optional)<input className={field} maxLength={500} value={slide.href} onChange={(event) => change(slide.slot, "href", event.target.value)} placeholder="/shop" /><span className="mt-1 block text-xs text-muted-foreground">Optional. If provided, use an internal path beginning with /, such as /shop.</span></label>
         </fieldset>
       ))}
       {message && <p role="status" className="text-sm">{message}</p>}
