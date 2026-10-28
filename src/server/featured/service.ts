@@ -28,8 +28,9 @@ export async function saveFeaturedItems(input: unknown): Promise<{ ok: true } | 
   if (!identity) return { ok: false, error: "Access denied. Sign in with an authorized account." };
 
   const values = sql.join(parsed.data.map((item) => sql`(
-    ${item.slot}, ${item.eyebrow}, ${item.title}, ${item.description}, ${item.imageUrl},
-    ${item.imageAlt}, ${item.ctaLabel}, ${item.href}, ${item.active}
+    ${item.slot}::integer, ${item.eyebrow}::varchar(100), ${item.title}::varchar(160),
+    ${item.description}::varchar(500), ${item.imageUrl}::text, ${item.imageAlt}::varchar(240),
+    ${item.ctaLabel}::varchar(80), ${item.href}::varchar(500), ${item.active}::boolean
   )`), sql`, `);
   const actor = sql`select ${user.id} from ${session} inner join ${user} on ${user.id} = ${session.userId}
     where ${currentPermissionSessionConditions(identity, "promotions:write", sql`clock_timestamp()`)}
