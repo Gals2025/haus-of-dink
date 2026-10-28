@@ -55,6 +55,7 @@ export async function POST(request: Request) {
       validUntil,
       allowedContentTypes: [contentType],
       maximumSizeInBytes: Math.min(size, maxImageSize),
+      addRandomSuffix: false,
     });
     const storeId = parseStoreIdFromDelegationToken(signedToken.delegationToken);
     if (!storeId) throw new Error("Blob storage did not return a store identifier.");
