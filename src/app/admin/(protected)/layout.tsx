@@ -30,6 +30,7 @@ const navigationGroups = [
   {
     label: "Marketing",
     items: [
+      { href: "/admin/featured", label: "Featured content", permission: "promotions:read", icon: Megaphone },
       { href: "/admin/promotions", label: "Promotions", permission: "promotions:read", icon: Megaphone },
     ],
   },
