@@ -32,9 +32,16 @@ export async function POST(request: Request) {
     }
 
     const { contentType, size } = parsed.data;
+    const featuredStoreId = process.env.FEATURED_BLOB_STORE_ID;
+    if (!featuredStoreId) {
+      return NextResponse.json({
+        error: "Connect the public featured-image Blob store with the FEATURED_BLOB prefix, then try again.",
+      }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
     const pathname = `featured/${crypto.randomUUID()}.${imageExtension[contentType]}`;
     const validUntil = Date.now() + 5 * 60 * 1000;
     const signedToken = await issueSignedToken({
+      storeId: featuredStoreId,
       pathname,
       operations: ["put"],
       validUntil,
