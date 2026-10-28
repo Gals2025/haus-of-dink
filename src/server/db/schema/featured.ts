@@ -18,7 +18,7 @@ export const featuredItems = pgTable("featured_items", {
   unique("featured_items_slot_unique").on(table.slot),
   check("featured_items_slot_range", sql`${table.slot} between 1 and 3`),
   check("featured_items_title_not_blank", sql`length(trim(${table.title})) > 0`),
-  check("featured_items_cta_not_blank", sql`length(trim(${table.ctaLabel})) > 0`),
-  check("featured_items_internal_href", sql`${table.href} like '/%' and ${table.href} not like '//%'`),
+  check("featured_items_cta_not_blank", sql`${table.ctaLabel} = '' or length(trim(${table.ctaLabel})) > 0`),
+  check("featured_items_internal_href", sql`${table.href} = '' or (${table.href} like '/%' and ${table.href} not like '//%')`),
   check("featured_items_image_https", sql`${table.imageUrl} is null or ${table.imageUrl} ~ '^https://[^/[:space:]]+/[^[:space:]]*$'`),
 ]);
