@@ -92,6 +92,20 @@
       "when": 1793170000000,
       "tag": "0012_featured_optional_cta",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793246153515,
+      "tag": "0013_checkout_fulfillment_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793246574442,
+      "tag": "0014_store_payment_instructions",
+      "breakpoints": true
     }
   ]
 }

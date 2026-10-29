@@ -1,0 +1,1 @@
+ALTER TABLE "store_settings" ADD COLUMN "payment_instructions" varchar(2000) DEFAULT '' NOT NULL;

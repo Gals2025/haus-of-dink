@@ -24,11 +24,25 @@ export async function getShop() {
   const db = getDb();
   const [items, settings] = await Promise.all([
     db.execute<ShopCatalogItem>(shopQuery),
-    db.execute<{ shipping: number }>(sql`select coalesce((select shipping_fee from store_settings where id=1),0) as shipping`),
+    db.execute<{ shipping: number; paymentInstructions: string }>(sql`select coalesce((select shipping_fee from store_settings where id=1),0) as shipping, coalesce((select payment_instructions from store_settings where id=1),'') as "paymentInstructions"`),
   ]);
-  return { items: items.rows, shipping: settings.rows[0]?.shipping ?? 0 };
+  return { items: items.rows, shipping: settings.rows[0]?.shipping ?? 0, paymentInstructions: settings.rows[0]?.paymentInstructions ?? "" };
 }
 export function guestWrite(request: string, input: GuestInput, rateKey: string) {
+  const persisted = {
+    ...input,
+    contact: {
+      ...input.contact,
+      // The current commerce transaction still creates a customer row. Use an isolated
+      // internal address during that transaction, then the migration trigger nulls it.
+      email: input.contact.email || `guest-${request}@checkout.invalid`,
+      address: input.contact.address,
+      __fulfillment: input.fulfillment,
+      __pickupPayment: input.pickupPayment ?? "",
+      __proofPath: input.proofPath ?? "",
+      __emailOptional: input.contact.email === "",
+    },
+  };
   // Persisted, atomic throttling works across server instances. Keys are server generated hashes.
   return sql`with throttle as (
     insert into rate_limit(id,key,count,last_request)
@@ -38,6 +52,6 @@ export function guestWrite(request: string, input: GuestInput, rateKey: string) 
       last_request=case when rate_limit.last_request < (extract(epoch from clock_timestamp())*1000)::bigint-600000 then (extract(epoch from clock_timestamp())*1000)::bigint else rate_limit.last_request end
     returning count
   ), placed as materialized (
-    select commerce_execute(null,${request}::uuid,${JSON.stringify(input)}::jsonb) as id from throttle where count<=10
+    select commerce_execute(null,${request}::uuid,${JSON.stringify(persisted)}::jsonb) as id from throttle where count<=10
   ) select id from placed`;
 }

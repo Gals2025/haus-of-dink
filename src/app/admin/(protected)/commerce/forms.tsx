@@ -27,7 +27,7 @@ export function CustomerEditor({customer}:{customer?:Customer}) {
   return <form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);save({action:"customer.save",...(customer?{id:customer.id}:{}),name:value(f,"name"),email:value(f,"email"),phone:value(f,"phone"),address:value(f,"address"),active:f.has("active")});}}>
     <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2"><legend className="mb-4 text-xl">{customer?"Edit customer":"New customer"}</legend>
       <label>Name<input required name="name" maxLength={160} defaultValue={customer?.name} className={control}/></label>
-      <label>Email<input required name="email" type="email" maxLength={254} defaultValue={customer?.email} className={control}/></label>
+      <label>Email<input required name="email" type="email" maxLength={254} defaultValue={customer?.email??""} className={control}/></label>
       <label>Phone<input name="phone" type="tel" maxLength={40} defaultValue={customer?.phone} className={control}/></label>
       <label>Address<textarea name="address" maxLength={1000} defaultValue={customer?.address} className={control}/></label>
       <label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={customer?.active??true}/>Active (can place new orders)</label>
@@ -55,13 +55,14 @@ export function PromotionEditor({promotion:p}:{promotion?:Promotion}) {
 }
 export function SettingsEditor({settings:s,canWrite}:{settings:Settings;canWrite:boolean}) {
   const {pending,message,save}=useSave();
-  return <form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);save({action:"settings.save",name:value(f,"name"),email:value(f,"email"),phone:value(f,"phone"),address:value(f,"address"),shippingFee:parsePesos(f.get("shippingFee"))});}}>
+  return <form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);save({action:"settings.save",name:value(f,"name"),email:value(f,"email"),phone:value(f,"phone"),address:value(f,"address"),shippingFee:parsePesos(f.get("shippingFee")),paymentInstructions:value(f,"paymentInstructions")});}}>
     <fieldset disabled={pending||!canWrite} className="grid gap-4 sm:grid-cols-2">
       <label>Store name<input required name="name" maxLength={160} defaultValue={s.name} className={control}/></label>
       <label>Contact email<input required name="email" type="email" maxLength={254} defaultValue={s.email} className={control}/></label>
       <label>Phone<input name="phone" type="tel" maxLength={40} defaultValue={s.phone} className={control}/></label>
       <label>Business address<textarea name="address" maxLength={1000} defaultValue={s.address} className={control}/></label>
       <label>Shipping fee for new orders (PHP)<input required name="shippingFee" type="number" min="0" max="1000000" step="0.01" defaultValue={s.shippingFee/100} className={control}/></label>
+      <label className="sm:col-span-2">Online payment instructions<textarea name="paymentInstructions" maxLength={2000} rows={4} defaultValue={s.paymentInstructions} placeholder="Add the GCash or bank account details customers should pay to." className={control}/><span className="text-xs text-muted-foreground">Shown during checkout when payment proof is required.</span></label>
       <p className="text-sm text-muted-foreground">Currency: PHP. Reporting timezone: Asia/Manila. Existing orders keep their original prices and shipping fee.</p>
       <Feedback message={message}/>{canWrite&&<div className="sm:col-span-2"><button className={button}>{pending?"Saving…":"Save settings"}</button></div>}
     </fieldset>
@@ -87,12 +88,13 @@ export function OrderComposer({options}:{options:OrderOptions}) {
 }
 export function OrderControls({order}:{order:OrderDetail}) {
   const {pending,message,save}=useSave();
-  return <div className="space-y-4"><p className="text-sm text-muted-foreground">Record only payments or refunds already completed outside this app. No funds are transferred here.</p>
-    {order.status==="pending"&&<>
+  return <div className="space-y-4"><p className="text-sm text-muted-foreground">Review the order and proof before confirming. Recording payment only updates this store; it does not transfer funds.</p>
+    {order.status==="awaiting_confirmation"&&<div className="flex flex-wrap gap-3"><button disabled={pending} onClick={()=>save({action:"order.confirm",id:order.id})} className={button}>Confirm order</button><button disabled={pending} onClick={()=>{const reason=window.prompt("Reason for rejecting this order (optional):"); if(reason!==null) save({action:"order.reject",id:order.id,reason});}} className="rounded-md border px-4 py-2">Reject order</button></div>}
+    {["pending","confirmed","ready_for_pickup","out_for_delivery"].includes(order.status)&&<>
       {(order.paymentStatus==="unpaid"||order.paymentStatus==="paid")&&<form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget); const refund=order.paymentStatus==="paid";if(!refund||window.confirm("Confirm the payment was refunded outside this app?")) save({action:refund?"order.refund":"order.pay",id:order.id,reference:value(f,"reference")});}} className="flex flex-wrap items-end gap-3">
         <label>Payment / refund reference<input required name="reference" minLength={3} maxLength={200} className={control}/></label><button disabled={pending} className={button}>{order.paymentStatus==="paid"?"Record completed refund":"Record received payment"}</button>
       </form>}
-      <div className="flex flex-wrap gap-4">{order.paymentStatus==="paid"&&<button disabled={pending} onClick={()=>{if(window.confirm("Fulfill this order and deduct reserved stock?"))save({action:"order.fulfill",id:order.id});}} className={button}>Fulfill order</button>}
+      <div className="flex flex-wrap gap-4">{order.fulfillmentMethod==="pickup"&&order.status==="confirmed"&&order.paymentStatus==="paid"&&<button disabled={pending} onClick={()=>save({action:"order.ready",id:order.id})} className={button}>Mark ready for pickup</button>}{order.fulfillmentMethod==="delivery"&&order.status==="confirmed"&&order.paymentStatus==="paid"&&<button disabled={pending} onClick={()=>save({action:"order.ship",id:order.id})} className={button}>Mark out for delivery</button>}{order.paymentStatus==="paid"&&<button disabled={pending} onClick={()=>{if(window.confirm("Complete this order and deduct reserved stock?"))save({action:"order.fulfill",id:order.id});}} className={button}>Mark completed</button>}
       {order.paymentStatus!=="paid"&&<button disabled={pending} onClick={()=>{if(window.confirm("Cancel this order and release reserved stock?"))save({action:"order.cancel",id:order.id});}} className="rounded-md border px-4 py-2">Cancel order</button>}</div>
     </>}
     <Feedback message={message}/>

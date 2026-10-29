@@ -9,14 +9,14 @@ export function writePermission(input: CommerceInput): Permission {
 }
 export function commerceWrite(identity: AuthSession, requestId: string, input: CommerceInput) {
   return sql`with actor as materialized (${catalogActor(identity, writePermission(input), true)})
-    select commerce_execute(actor.id,${requestId}::uuid,${JSON.stringify(input)}::jsonb) as id from actor`;
+    ${input.action === "settings.save" ? sql`, saved as materialized (select commerce_execute(actor.id,${requestId}::uuid,${JSON.stringify(input)}::jsonb) as id from actor), updated as (update store_settings set payment_instructions=${input.paymentInstructions},updated_at=clock_timestamp() where id=1 and exists(select 1 from saved) returning id) select saved.id from saved` : sql`select commerce_execute(actor.id,${requestId}::uuid,${JSON.stringify(input)}::jsonb) as id from actor`}`;
 }
 export function commerceList(identity: AuthSession, area: Area, filters: Filters) {
   const actor = catalogActor(identity, `${area}:read` as Permission);
   const search = `%${filters.search.replace(/[\\%_]/g,"\\$&")}%`;
   const select = area === "customers" ? sql`select id,name,email,phone,address,active from customers where (name ilike ${search} or email ilike ${search}) order by lower(name),id` :
     area === "promotions" ? sql`select id,code,kind,amount,minimum,starts_at as "startsAt",ends_at as "endsAt",usage_limit as "usageLimit",used,active from promotions where code ilike ${search} order by created_at desc,id` :
-    area === "settings" ? sql`select name,email,phone,address,shipping_fee as "shippingFee" from store_settings where id=1` :
+    area === "settings" ? sql`select name,email,phone,address,shipping_fee as "shippingFee",payment_instructions as "paymentInstructions" from store_settings where id=1` :
     sql`select o.id,o.customer_snapshot->>'name' as customer,o.status,o.payment_status as "paymentStatus",o.total,o.created_at as "createdAt" from orders o
       where (o.id::text ilike ${search} or o.customer_snapshot->>'name' ilike ${search}) and (${filters.status === "all"} or o.status=${filters.status}) order by o.created_at desc,o.id`;
   return sql`with actor as materialized (${actor}), rows as (${select})
@@ -25,8 +25,9 @@ export function commerceList(identity: AuthSession, area: Area, filters: Filters
 }
 export function orderDetailQuery(identity: AuthSession, id: string) {
   return sql`with actor as materialized (${catalogActor(identity,"orders:read")})
-    select o.id,o.customer_snapshot->>'name' as customer,o.customer_snapshot as "customerSnapshot",o.status,o.payment_status as "paymentStatus",
+      select o.id,o.customer_snapshot->>'name' as customer,o.customer_snapshot as "customerSnapshot",o.status,o.payment_status as "paymentStatus",
       o.subtotal,o.discount,o.shipping_fee as "shippingFee",o.total,o.created_at::text as "createdAt",o.promotion_code as "promotionCode",o.payment_reference as "paymentReference",o.notes,l.name as location,
+      o.fulfillment_method as "fulfillmentMethod",o.pickup_payment as "pickupPayment",o.payment_proof_path as "paymentProofPath",o.hold_expires_at::text as "holdExpiresAt",o.rejection_reason as "rejectionReason",
       (select jsonb_agg(jsonb_build_object('sku',i.sku,'name',i.name,'quantity',i.quantity,'unitPrice',i.unit_price) order by i.sku) from order_items i where i.order_id=o.id) as items,
       coalesce((select jsonb_agg(jsonb_build_object('action',a.action,'createdAt',a.created_at,'actor',coalesce(u.name,case when a.actor_id is null then 'Guest checkout' else 'Former account' end)) order by a.created_at,a.id)
         from commerce_audit a left join "user" u on u.id=a.actor_id where a.entity_id=o.id),'[]'::jsonb) as history

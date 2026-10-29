@@ -9,7 +9,7 @@ import { guestInput, type CheckoutResult } from "@/server/commerce/guest-contrac
 import { guestWrite } from "@/server/commerce/guest";
 export async function placeGuestOrder(request: unknown, input: unknown): Promise<CheckoutResult> {
   const parsed = guestInput.safeParse(input);
-  if (!z.uuid().safeParse(request).success || !parsed.success) return { ok: false, error: "Check your items, name, email, contact number and delivery address." };
+  if (!z.uuid().safeParse(request).success || !parsed.success) return { ok: false, error: "Check your contact details, fulfillment choice, proof of payment, and selected items." };
   try {
     const h = await headers();
     // Vercel supplies this header; outside Vercel use a shared limit rather than trusting arbitrary forwarded IPs.

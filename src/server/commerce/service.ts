@@ -37,7 +37,7 @@ export async function getOrder(id: string) {
   const identity = await getPermissionSession("orders:read"); if(!identity) throw Error("Access denied.");
   return (await getDb().execute<OrderDetail>(orderDetailQuery(identity,id))).rows[0] ?? null;
 }
-export type OrderOptions = { authorized: boolean; customers: {id:string;name:string;email:string}[]; locations: {id:string;name:string}[]; variants: {id:string;name:string;sku:string;price:number}[] };
+export type OrderOptions = { authorized: boolean; customers: {id:string;name:string;email:string|null}[]; locations: {id:string;name:string}[]; variants: {id:string;name:string;sku:string;price:number}[] };
 export async function getOrderOptions() {
   const identity = await getPermissionSession("orders:write"); if(!identity) throw Error("Access denied.");
   const result=(await getDb().execute<OrderOptions>(orderOptionsQuery(identity))).rows[0];
