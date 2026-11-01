@@ -11,5 +11,5 @@ export const catalogAudit = pgTable("catalog_audit", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("catalog_audit_product_idx").on(t.productId, t.createdAt),
-  check("catalog_audit_action_check", sql`${t.action} in ('create', 'update', 'archive', 'reactivate')`),
+  check("catalog_audit_action_check", sql`${t.action} in ('create', 'update', 'archive', 'reactivate', 'delete')`),
 ]);
