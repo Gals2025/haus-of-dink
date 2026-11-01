@@ -1,0 +1,131 @@
+"use client";
+import { useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { peso } from "@/server/commerce/contracts";
+import type { PosLocation, PosProduct } from "@/server/pos/contracts";
+import { submitPosSale } from "./actions";
+
+type Line = { variantId: string; quantity: number };
+const field = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
+const input = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
+
+export function PosTerminal({ locations, products }: { locations: PosLocation[]; products: PosProduct[] }) {
+  const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
+  const [search, setSearch] = useState("");
+  const [lines, setLines] = useState<Line[]>([]);
+  const [method, setMethod] = useState("cash");
+  const [cash, setCash] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [message, setMessage] = useState("");
+  const [receiptId, setReceiptId] = useState("");
+  const [receipt, setReceipt] = useState<{ total: number; change: number; method: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const request = useRef({ body: "", id: "" });
+  const subtotal = useMemo(() => lines.reduce((total, line) => total + (products.find(p => p.id === line.variantId)?.price ?? 0) * line.quantity, 0), [lines, products]);
+  const tendered = method === "cash" ? parseMoney(cash) : subtotal;
+  const change = Math.max(0, tendered - subtotal);
+  const visibleProducts = products.filter(p => {
+    const needle = search.trim().toLowerCase();
+    return (!needle || [p.name, p.sku, p.barcode ?? ""].some(value => value.toLowerCase().includes(needle)));
+  }).slice(0, 40);
+
+  function add(product: PosProduct) {
+    if ((product.stock[locationId] ?? 0) <= 0) return;
+    setLines(current => {
+      const existing = current.find(line => line.variantId === product.id);
+      return existing ? current.map(line => line.variantId === product.id ? { ...line, quantity: Math.min(product.stock[locationId] ?? 0, line.quantity + 1) } : line) : [...current, { variantId: product.id, quantity: 1 }];
+    });
+  }
+  function setQuantity(variantId: string, quantity: number) {
+    const max = products.find(p => p.id === variantId)?.stock[locationId] ?? 0;
+    if (quantity <= 0) setLines(current => current.filter(line => line.variantId !== variantId));
+    else setLines(current => current.map(line => line.variantId === variantId ? { ...line, quantity: Math.min(max, quantity) } : line));
+  }
+
+  function checkout() {
+    setMessage(""); setReceiptId(""); setReceipt(null);
+    if (!locationId || !lines.length) { setMessage("Choose a location and add at least one product."); return; }
+    if (method === "cash" && tendered < subtotal) { setMessage("Cash received must cover the total."); return; }
+    const data = { locationId, customerName: customerName.trim(), paymentMethod: method, amountTendered: tendered, items: lines };
+    const body = JSON.stringify(data);
+    if (request.current.body !== body) request.current = { body, id: crypto.randomUUID() };
+    startTransition(async () => {
+      try {
+        const result = await submitPosSale({ ...data, requestId: request.current.id });
+        if (!result.ok) { setMessage(result.error); return; }
+        setReceiptId(result.id);
+        setReceipt({ total: subtotal, change: method === "cash" ? Math.max(0, tendered - subtotal) : 0, method });
+        setMessage("Sale recorded and inventory updated.");
+        setLines([]); setCash(""); setCustomerName(""); request.current = { body: "", id: "" };
+        router.refresh();
+      } catch {
+        setMessage("The result could not be confirmed. Retry without changing the sale to avoid creating a duplicate.");
+      }
+    });
+  }
+
+  return <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
+    <Card className="gap-4">
+      <CardHeader><CardTitle className="text-xl">Products</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm">Store location<select className={field} value={locationId} onChange={event => { setLocationId(event.target.value); setLines([]); }}>
+            {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
+          </select></label>
+          <label className="text-sm">Search by name, SKU, or barcode<input className={input} value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            const term = search.trim().toLowerCase();
+            const exact = products.find(product => (product.barcode?.toLowerCase() === term || product.sku.toLowerCase() === term) && (product.stock[locationId] ?? 0) > 0);
+            if (exact) { add(exact); setSearch(""); }
+          }} placeholder="Scan or type to search…" /></label>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {visibleProducts.map(product => {
+            const available = product.stock[locationId] ?? 0;
+            return <button key={product.id} type="button" disabled={available <= 0} onClick={() => add(product)} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-muted disabled:opacity-50">
+              <span className="min-w-0"><span className="block truncate font-medium">{product.name}</span><span className="block text-xs text-muted-foreground">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}</span></span>
+              <span className="shrink-0 text-right text-sm">{peso(product.price)}<span className="block text-xs text-muted-foreground">{available} in stock</span></span>
+            </button>;
+          })}
+          {visibleProducts.length === 0 && <p className="p-4 text-sm text-muted-foreground">No matching products.</p>}
+        </div>
+      </CardContent>
+    </Card>
+    <Card className="gap-4">
+      <CardHeader><CardTitle className="text-xl">Current sale</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <label className="block text-sm">Customer name <span className="text-muted-foreground">(optional)</span><input className={input} maxLength={160} value={customerName} onChange={event => setCustomerName(event.target.value)} placeholder="Walk-in customer" /></label>
+        <div className="divide-y rounded-lg border">
+          {lines.map(line => {
+            const product = products.find(p => p.id === line.variantId)!;
+            return <div key={line.variantId} className="flex items-center gap-2 p-3 text-sm">
+              <div className="min-w-0 flex-1"><p className="truncate font-medium">{product.name}</p><p className="text-xs text-muted-foreground">{peso(product.price)} each</p></div>
+              <input aria-label={`Quantity for ${product.name}`} className="w-16 rounded-md border bg-background px-2 py-1 text-center" type="number" min="0" max={product.stock[locationId] ?? 0} value={line.quantity} onChange={event => setQuantity(line.variantId, Number(event.target.value))} />
+              <span className="w-20 text-right tabular-nums">{peso(product.price * line.quantity)}</span>
+            </div>;
+          })}
+          {lines.length === 0 && <p className="p-5 text-center text-sm text-muted-foreground">Add products to start a sale.</p>}
+        </div>
+        <div className="flex justify-between border-t pt-3 text-lg font-semibold"><span>Total</span><span>{peso(subtotal)}</span></div>
+        <label className="block text-sm">Payment method<select className={field} value={method} onChange={event => { setMethod(event.target.value); setCash(""); }}>
+          <option value="cash">Cash</option><option value="gcash">GCash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option>
+        </select></label>
+        {method === "cash" && <><label className="block text-sm">Cash received (PHP)<input className={input} inputMode="decimal" value={cash} onChange={event => setCash(event.target.value)} placeholder="0.00" /></label><div className="flex justify-between text-sm"><span>Change due</span><strong>{peso(change)}</strong></div></>}
+        {message && <div role="status" className="rounded-md border p-3 text-sm">{message}{receiptId && <><p className="mt-1 break-all text-xs text-muted-foreground">Sale reference: {receiptId}</p>{receipt && <p className="mt-2">{peso(receipt.total)} · {receipt.method.replaceAll("_", " ")}{receipt.method === "cash" ? ` · change ${peso(receipt.change)}` : " · paid"}</p>}<Link href="/admin/orders" className="mt-2 inline-block text-xs underline">View sales and orders</Link></>}</div>}
+        <Button className="w-full" disabled={pending || !lines.length || subtotal <= 0} onClick={checkout}>{pending ? "Recording sale…" : "Complete sale"}</Button>
+        <p className="text-xs text-muted-foreground">Completing records a paid, fulfilled POS order and a SALE movement for each item.</p>
+      </CardContent>
+    </Card>
+  </div>;
+}
+
+function parseMoney(value: string) {
+  if (!/^\d{1,7}(\.\d{1,2})?$/.test(value.trim())) return 0;
+  const [whole, cents = ""] = value.trim().split(".");
+  return Number(whole) * 100 + Number(cents.padEnd(2, "0"));
+}

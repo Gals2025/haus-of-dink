@@ -22,8 +22,10 @@ export const storeSettings = pgTable("store_settings", {
   paymentInstructions: varchar("payment_instructions", { length: 2000 }).default("").notNull(), ...dates(),
 }, (t) => [check("store_settings_valid", sql`${t.id} = 1 AND length(trim(${t.name})) > 0 AND ${t.shippingFee} >= 0`)]);
 export const orders = pgTable("orders", {
-  id: uuid("id").primaryKey(), customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  id: uuid("id").primaryKey(), customerId: uuid("customer_id").references(() => customers.id, { onDelete: "restrict" }),
   locationId: uuid("location_id").notNull().references(() => inventoryLocations.id, { onDelete: "restrict" }),
+  channel: text("channel").default("ecommerce").notNull(),
+  paymentMethod: text("payment_method"), amountTendered: integer("amount_tendered"), changeDue: integer("change_due").default(0).notNull(),
   status: text("status").default("pending").notNull(), paymentStatus: text("payment_status").default("unpaid").notNull(),
   fulfillmentMethod: text("fulfillment_method").default("delivery").notNull(), pickupPayment: text("pickup_payment"),
   paymentProofPath: varchar("payment_proof_path", { length: 500 }), holdExpiresAt: timestamp("hold_expires_at", { withTimezone: true }),
@@ -35,7 +37,8 @@ export const orders = pgTable("orders", {
   promotionCode: varchar("promotion_code", { length: 40 }), notes: varchar("notes", { length: 1000 }).notNull(),
   actorId: text("actor_id").references(() => user.id, { onDelete: "restrict" }), ...dates(),
 }, (t) => [index("orders_created_idx").on(t.createdAt, t.id), index("orders_customer_idx").on(t.customerId),
-  check("orders_valid", sql`${t.status} IN ('pending','awaiting_confirmation','confirmed','ready_for_pickup','out_for_delivery','fulfilled','cancelled') AND ${t.paymentStatus} IN ('unpaid','paid','refunded') AND ${t.fulfillmentMethod} IN ('delivery','pickup') AND (${t.pickupPayment} IS NULL OR ${t.pickupPayment} IN ('online','upon_pickup')) AND (${t.status} <> 'fulfilled' OR ${t.paymentStatus} = 'paid') AND (${t.status} <> 'cancelled' OR ${t.paymentStatus} <> 'paid') AND ${t.subtotal} >= 0 AND ${t.discount} >= 0 AND ${t.discount} <= ${t.subtotal} AND ${t.shippingFee} >= 0 AND ${t.total} = ${t.subtotal} - ${t.discount} + ${t.shippingFee}`)]);
+  index("orders_channel_created_idx").on(t.channel, t.createdAt, t.id),
+  check("orders_valid", sql`${t.status} IN ('pending','awaiting_confirmation','confirmed','ready_for_pickup','out_for_delivery','fulfilled','cancelled') AND ${t.paymentStatus} IN ('unpaid','paid','refunded') AND ${t.fulfillmentMethod} IN ('delivery','pickup') AND (${t.pickupPayment} IS NULL OR ${t.pickupPayment} IN ('online','upon_pickup')) AND (${t.status} <> 'fulfilled' OR ${t.paymentStatus} = 'paid') AND (${t.status} <> 'cancelled' OR ${t.paymentStatus} <> 'paid') AND ${t.subtotal} >= 0 AND ${t.discount} >= 0 AND ${t.discount} <= ${t.subtotal} AND ${t.shippingFee} >= 0 AND ${t.total} = ${t.subtotal} - ${t.discount} + ${t.shippingFee} AND ${t.channel} IN ('ecommerce','pos') AND (${t.channel} <> 'pos' OR (${t.customerId} IS NULL AND ${t.actorId} IS NOT NULL AND ${t.status} = 'fulfilled' AND ${t.paymentStatus} = 'paid' AND ${t.paymentMethod} IS NOT NULL AND ${t.amountTendered} IS NOT NULL)) AND (${t.paymentMethod} IS NULL OR ${t.paymentMethod} IN ('cash','gcash','card','bank_transfer')) AND ${t.changeDue} >= 0 AND (${t.amountTendered} IS NULL OR ${t.amountTendered} >= ${t.total})`)]);
 export const orderItems = pgTable("order_items", {
   id: uuid("id").defaultRandom().primaryKey(), orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   variantId: uuid("variant_id").notNull().references(() => productVariants.id, { onDelete: "restrict" }),

@@ -3,6 +3,7 @@
 The three remaining workspace roadmap cards now have working administration routes:
 
 - `/admin/orders`: search and paginate orders, create multi-SKU orders for an active customer and stock location, view immutable order snapshots/history, record received payments/refunds, fulfill or cancel pending orders.
+- `/admin/pos`: staff point of sale for walk-in purchases. Search by product, SKU or barcode, choose a stock location, accept cash/GCash/card/bank transfer, calculate cash change, and record a completed sale.
 - `/admin/customers`: create/edit contacts and deactivate/reactivate customers. Historical orders retain the contact snapshot; customer records are not hard-deleted.
 - `/admin/promotions`: create/edit/disable fixed PHP or percentage codes with Philippine local start/end times, a minimum merchandise subtotal, and a usage limit. One code per order; cancelled orders release usage. Existing orders keep their original discount.
 - `/admin/reports`: date-filtered fulfilled sales, pending deposits, cancelled counts, product costs, merchandise gross profit and daily CSV export. Dates are order-creation dates in Asia/Manila, inclusive of the selected end day. Gross profit excludes shipping and is omitted if any fulfilled line lacks a cost snapshot.
@@ -10,9 +11,9 @@ The three remaining workspace roadmap cards now have working administration rout
 
 ## Authorization and atomicity
 
-Admins and super admins can manage orders, customers and promotions, and read sales reports/settings. Only super admins can write settings. Staff receive none of these new permissions. Every read rechecks the database session, expiry, role and active status in its statement. Every mutation runs the existing `managementLock` as the first statement in the same `db.batch()` transaction, then locks/rechecks the actor and calls `commerce_execute`.
+Admins and super admins can manage orders, customers and promotions, and read sales reports/settings. Staff have a separate `pos:sell` permission for in-store sales, without order management or direct inventory adjustment access. Only super admins can write settings. Every read rechecks the database session, expiry, role and active status in its statement. Every mutation runs the existing `managementLock` as the first statement in the same `db.batch()` transaction, then locks/rechecks the actor.
 
-Creation reserves each line through `inventory_apply`; fulfillment consumes that exact reservation, and cancellation releases it. All line movements, order changes, promotion counters and append-only audit entries commit together. Existing reservations can be sold/released even after a product is archived or variant deactivated; inactive catalog entries cannot receive new orders. Current server prices and costs are snapshotted, and inputs cannot override totals. Integer centavos are used throughout. A caller-provided request UUID is bound to the actor and complete normalized payload; identical retries return the original result and changed retries fail.
+Online staff orders reserve each line through `inventory_apply`; fulfillment consumes that exact reservation, and cancellation releases it. POS sales create and consume a reservation in one transaction, recording the order, `SALE` movement and append-only audit entry together. POS orders are marked fulfilled and paid immediately, retain a walk-in/customer name snapshot, and appear in order history and fulfilled-sales reports with their in-store payment method and cash change. Current server prices and costs are snapshotted, and inputs cannot override totals. Integer centavos are used throughout. A caller-provided request UUID is bound to the actor and complete normalized payload; identical retries return the original result and changed retries fail.
 
 Orders start pending/unpaid. Record a received payment before fulfillment. To cancel a paid pending order, first record an actual external refund. Fulfilled/cancelled orders are closed and cannot be edited or transitioned again. Payment and refund reference changes are retained in append-only audit payloads. Refunded pending orders must be cancelled to release their stock. Payment/refund recording does not transfer money. This release implements the admin roadmap; payment-gateway settlement, tax invoicing and returns after fulfillment are separate integrations.
 
@@ -20,7 +21,7 @@ Orders start pending/unpaid. Record a received payment before fulfillment. To ca
 
 ## Deployment
 
-Apply `src/server/db/migrations/0010_commerce.sql` once to the intended database **after 0000–0009**. For a correctly tracked database, use `npm run db:migrate` with its identified `DATABASE_URL`. If migrations were applied manually, follow the existing migration-history reconciliation procedure before resuming Drizzle migration commands. Do not mix a manual SQL execution and a migrator run without reconciling the ledger. No database migration runs during build or a page request.
+Apply the migrations through `0016_pos_constraints.sql` to the intended database in journal order. For a correctly tracked database, use `npm run db:migrate` with its identified `DATABASE_URL`. If migrations were applied manually, follow the existing migration-history reconciliation procedure before resuming Drizzle migration commands. Do not mix a manual SQL execution and a migrator run without reconciling the ledger. No database migration runs during build or a page request.
 
 After migration, sign in as super admin, save store settings, add customers, and ensure active PHP variants have received stock. Create a small test order, record a real test payment reference, and fulfill it to verify the stock ledger. Use a separate unpaid test order to verify cancellation/release.
 

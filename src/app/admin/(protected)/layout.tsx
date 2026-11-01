@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import {
-  ArrowUpRight, BarChart3, Boxes, ClipboardList, History, LayoutDashboard,
+  ArrowUpRight, BarChart3, Boxes, ClipboardList, History, LayoutDashboard, ShoppingCart,
   Megaphone, Package, Settings, Shapes, ShieldCheck, Tags, Users,
 } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
@@ -14,6 +14,7 @@ const navigationGroups = [
   {
     label: "Sales & customers",
     items: [
+      { href: "/admin/pos", label: "Point of sale", permission: "pos:sell", icon: ShoppingCart },
       { href: "/admin/orders", label: "Orders", permission: "orders:read", icon: ClipboardList },
       { href: "/admin/customers", label: "Customers", permission: "customers:read", icon: Users },
     ],

@@ -17,7 +17,7 @@ export function commerceList(identity: AuthSession, area: Area, filters: Filters
   const select = area === "customers" ? sql`select id,name,email,phone,address,active from customers where (name ilike ${search} or email ilike ${search}) order by lower(name),id` :
     area === "promotions" ? sql`select id,code,kind,amount,minimum,starts_at as "startsAt",ends_at as "endsAt",usage_limit as "usageLimit",used,active from promotions where code ilike ${search} order by created_at desc,id` :
     area === "settings" ? sql`select name,email,phone,address,shipping_fee as "shippingFee",payment_instructions as "paymentInstructions" from store_settings where id=1` :
-    sql`select o.id,o.customer_snapshot->>'name' as customer,o.status,o.payment_status as "paymentStatus",o.total,o.created_at as "createdAt" from orders o
+    sql`select o.id,o.customer_snapshot->>'name' as customer,o.channel,o.status,o.payment_status as "paymentStatus",o.total,o.created_at as "createdAt" from orders o
       where (o.id::text ilike ${search} or o.customer_snapshot->>'name' ilike ${search}) and (${filters.status === "all"} or o.status=${filters.status}) order by o.created_at desc,o.id`;
   return sql`with actor as materialized (${actor}), rows as (${select})
     select exists(select 1 from actor) as authorized,
@@ -25,7 +25,7 @@ export function commerceList(identity: AuthSession, area: Area, filters: Filters
 }
 export function orderDetailQuery(identity: AuthSession, id: string) {
   return sql`with actor as materialized (${catalogActor(identity,"orders:read")})
-      select o.id,o.customer_snapshot->>'name' as customer,o.customer_snapshot as "customerSnapshot",o.status,o.payment_status as "paymentStatus",
+      select o.id,o.customer_snapshot->>'name' as customer,o.customer_snapshot as "customerSnapshot",o.channel,o.payment_method as "paymentMethod",o.amount_tendered as "amountTendered",o.change_due as "changeDue",o.status,o.payment_status as "paymentStatus",
       o.subtotal,o.discount,o.shipping_fee as "shippingFee",o.total,o.created_at::text as "createdAt",o.promotion_code as "promotionCode",o.payment_reference as "paymentReference",o.notes,l.name as location,
       o.fulfillment_method as "fulfillmentMethod",o.pickup_payment as "pickupPayment",o.payment_proof_path as "paymentProofPath",o.hold_expires_at::text as "holdExpiresAt",o.rejection_reason as "rejectionReason",
       (select jsonb_agg(jsonb_build_object('sku',i.sku,'name',i.name,'quantity',i.quantity,'unitPrice',i.unit_price) order by i.sku) from order_items i where i.order_id=o.id) as items,

@@ -12,6 +12,7 @@ Unknown roles and permissions deny by default. Database errors propagate without
 | Admin protected layout | `admin:access` | Yes | Yes | Yes |
 | Admin dashboard page | `dashboard:read` | Yes | Yes | Yes |
 | GET /api/admin/session (own role only) | `session:read` | Yes | Yes | Yes |
+| In-store point-of-sale checkout | `pos:sell` | Yes | Yes | Yes |
 | Compatibility `requireSuperAdmin()` boundary (no current consumer) | `super_admin:access` | No | No | Yes |
 
 At the Phase 2 baseline there were no administrative data mutations, user management
@@ -49,7 +50,7 @@ against in-memory PGlite using the shared configuration, plus every permission, 
 inactive accounts, stale roles/identities, revocation, unknown permissions, and DB failures.
 No test loads production environment files or connects to Neon. Migration SQL is executed
 only inside disposable PGlite instances to validate compatibility; no external migration
-is applied. No schema change or migration is required for this phase.
+is applied. The POS permission is evaluated from the current database role and does not need a separate permission table migration.
 
 Each request observes current state at its authorization query. Phase 3 uses an atomic
 Neon HTTP batch with a separate advisory-lock statement and mutation-time revalidation

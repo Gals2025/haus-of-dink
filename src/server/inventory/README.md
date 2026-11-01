@@ -27,7 +27,7 @@ Use the server-only `inventory.change(input)` service; do not write balances dir
 - `RESERVATION_RELEASE`: requires `reservationId`, decreases reserved only, and cannot release more than the reservation has left. Use it for cancellations before fulfillment.
 - `CANCELLED_ORDER_RESTOCK`: adds physically returned units after a sale already reduced on-hand. It must not be used to cancel an unfulfilled reservation.
 
-The engine is ready for internal checkout/POS calls. This phase does not add a sales UI, checkout integration, reservation expiration scheduler, product CRUD, automatic reservation release, or transfer workflow. Callers must provide stable business references and request IDs; order-level return limits belong to the future order service.
+The POS route uses the atomic `SALE` movement path for immediate in-store purchases. Other internal callers must provide stable business references and request IDs; order-level return limits belong to the future order service.
 
 ## Transaction model
 
