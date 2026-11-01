@@ -11,6 +11,7 @@ cannot bypass runtime validation. All results use `{ ok: true, ... }` or
 - `updateProduct(productId: unknown, input: unknown): Promise<MutationResult>`
 - `archiveProduct(productId: unknown): Promise<MutationResult>`
 - `reactivateProduct(productId: unknown): Promise<MutationResult>`
+- `deleteProduct(productId: unknown): Promise<MutationResult>` (only when variants have no inventory or sales history)
 
 Staff pages and Server Actions are described in the Phase 3 section below.
 Public HTTP mutation routes are not exposed. Server Action variant and catalog management workflows are documented below.
