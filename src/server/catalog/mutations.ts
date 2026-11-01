@@ -6,7 +6,7 @@ import { getDb } from "@/server/db";
 import { createProductInput, updateProductInput, productId, errors, type MutationResult } from "./contracts";
 import { mutateProductQuery, type ProductAction } from "./mutation-queries";
 
-type Outcome = { authorized: boolean; found: boolean; changed: boolean; validReferences?: boolean };
+type Outcome = { authorized: boolean; found: boolean; changed: boolean; validReferences?: boolean; blockedByHistory?: boolean };
 export type MutationStorage = {
   authorize: typeof getPermissionSession;
   // Must run managementLock FIRST, then query in the SAME READ COMMITTED transaction.
@@ -38,6 +38,7 @@ export function createCatalogMutations(deps: MutationStorage) {
       if (!result?.authorized) return errors.FORBIDDEN;
       if (action !== "create" && !result.found) return errors.NOT_FOUND;
       if (result.validReferences === false) return { ...errors.REFERENCE, error: "Choose an active brand and category. Existing inactive selections can be retained." };
+      if (action === "delete" && result.blockedByHistory) return { ...errors.REFERENCE, error: "This product has inventory or sales history and cannot be deleted. Archive it instead." };
       if (action === "create" && !result.changed) return errors.UNAVAILABLE;
       return { ok: true, productId: parsedId.data, changed: result.changed };
     } catch (error) { return databaseFailure(error); }
@@ -47,9 +48,10 @@ export function createCatalogMutations(deps: MutationStorage) {
     updateProduct: (productId: unknown, input: unknown): Promise<MutationResult> => mutate("update", productId, input),
     archiveProduct: (productId: unknown): Promise<MutationResult> => mutate("archive", productId),
     reactivateProduct: (productId: unknown): Promise<MutationResult> => mutate("reactivate", productId),
+    deleteProduct: (productId: unknown): Promise<MutationResult> => mutate("delete", productId),
   };
 }
-export const { createProduct, updateProduct, archiveProduct, reactivateProduct } = createCatalogMutations({
+export const { createProduct, updateProduct, archiveProduct, reactivateProduct, deleteProduct } = createCatalogMutations({
   authorize: getPermissionSession,
   change: async (query) => {
     const db = getDb();
