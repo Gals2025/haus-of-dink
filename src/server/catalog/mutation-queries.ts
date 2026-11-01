@@ -4,7 +4,7 @@ import type { AuthSession } from "@/server/auth/authorize";
 import type { ProductInput, ProductPatch } from "./contracts";
 import { catalogActor } from "./queries";
 
-export type ProductAction = "create" | "update" | "archive" | "reactivate";
+export type ProductAction = "create" | "update" | "archive" | "reactivate" | "delete";
 const columns = {
   name: "name", slug: "slug", description: "description", shortDescription: "short_description",
   brandId: "brand_id", categoryId: "category_id", status: "status", featured: "featured", newArrival: "new_arrival",
@@ -25,6 +25,14 @@ export function mutateProductQuery(identity: AuthSession, action: ProductAction,
         select ${id}::uuid, ${input.name}, ${input.slug}, ${input.description ?? null}, ${input.shortDescription ?? null},
           ${input.brandId}::uuid, ${input.categoryId}::uuid, ${input.status}::product_status, ${input.featured}, ${input.newArrival}
         from actor where (select valid from refs) returning *`
+    : action === "delete" ? sql`delete from products p using target t
+        where p.id = t.id
+          and not exists (select 1 from product_variants v where v.product_id = p.id and (
+            exists (select 1 from inventory_balances b where b.variant_id = v.id) or
+            exists (select 1 from inventory_reservations r where r.variant_id = v.id) or
+            exists (select 1 from inventory_movements m where m.variant_id = v.id) or
+            exists (select 1 from order_items oi where oi.variant_id = v.id)))
+        returning p.*`
     : sql`update products p set ${action === "update"
       ? (entries.length ? sql.join(entries.map(([key, value]) => sql`${sql.identifier(columns[key])} = ${value}`), sql`, `) : sql`name = p.name`)
       : sql`status = ${action === "archive" ? "archived" : "draft"}::product_status`}, updated_at = clock_timestamp()
@@ -39,10 +47,11 @@ export function mutateProductQuery(identity: AuthSession, action: ProductAction,
     changed as (${changed}),
     logged as (
       insert into catalog_audit (actor_id, product_id, action, changes)
-      select a.id, p.id, ${action}, jsonb_build_object('fields', ${JSON.stringify(action === "update" ? entries.map(([key]) => key) : action === "create" ? Object.keys(columns) : ["status"])}::jsonb,
-        'before', (select before_state from target), 'after', ${safeState})
+      select a.id, p.id, ${action}, jsonb_build_object('fields', ${JSON.stringify(action === "update" ? entries.map(([key]) => key) : action === "create" ? Object.keys(columns) : action === "delete" ? ["deleted"] : ["status"])}::jsonb,
+        'before', (select before_state from target), 'after', ${action === "delete" ? sql`null::jsonb` : safeState})
       from changed p cross join actor a returning id
     )
     select exists(select 1 from actor) as authorized, exists(select 1 from target) as found,
-      exists(select 1 from logged) as changed, (select valid from refs) as "validReferences"`;
+      exists(select 1 from logged) as changed, (select valid from refs) as "validReferences",
+      (${action === "delete"} and exists(select 1 from target) and not exists(select 1 from changed)) as "blockedByHistory"`;
 }
