@@ -1,6 +1,6 @@
 import "server-only";
 import { getPermissionSession } from "@/server/auth/authorize";
-import { createProduct, updateProduct, archiveProduct, reactivateProduct } from "./mutations";
+import { createProduct, updateProduct, archiveProduct, reactivateProduct, deleteProduct } from "./mutations";
 import { errors, type MutationResult } from "./contracts";
 
 // The action boundary authorizes independently of page visibility. Services
@@ -8,7 +8,7 @@ import { errors, type MutationResult } from "./contracts";
 export function createProductAdminActions(deps: {
   authorize: typeof getPermissionSession;
   create: typeof createProduct; update: typeof updateProduct;
-  archive: typeof archiveProduct; reactivate: typeof reactivateProduct;
+  archive: typeof archiveProduct; reactivate: typeof reactivateProduct; delete: typeof deleteProduct;
   refresh: (id: string) => void;
 }) {
   async function run(operation: () => Promise<MutationResult>): Promise<MutationResult> {
@@ -27,5 +27,6 @@ export function createProductAdminActions(deps: {
     update: (id: unknown, input: unknown) => run(() => deps.update(id, input)),
     archive: (id: unknown) => run(() => deps.archive(id)),
     reactivate: (id: unknown) => run(() => deps.reactivate(id)),
+    delete: (id: unknown) => run(() => deps.delete(id)),
   };
 }
