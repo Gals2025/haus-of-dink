@@ -52,4 +52,4 @@ export const { listProducts, getProductDetail, listProductOptions } = createCata
   read: async <T extends Record<string, unknown>>(query: SQL) => (await getDb().execute<T>(query)).rows,
 });
 
-export { createProduct, updateProduct, archiveProduct, reactivateProduct } from "./mutations";
+export { createProduct, updateProduct, archiveProduct, reactivateProduct, deleteProduct } from "./mutations";
