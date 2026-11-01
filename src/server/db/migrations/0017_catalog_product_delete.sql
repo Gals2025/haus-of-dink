@@ -1,0 +1,2 @@
+ALTER TABLE "catalog_audit" DROP CONSTRAINT "catalog_audit_action_check";--> statement-breakpoint
+ALTER TABLE "catalog_audit" ADD CONSTRAINT "catalog_audit_action_check" CHECK ("catalog_audit"."action" in ('create', 'update', 'archive', 'reactivate', 'delete'));
