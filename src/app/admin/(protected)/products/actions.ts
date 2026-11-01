@@ -3,11 +3,11 @@ import { createProductVariant, updateProductVariant, deleteProductVariant } from
 import { createCatalogOption } from "@/server/catalog/option-mutations";
 import { revalidatePath } from "next/cache";
 import { getPermissionSession } from "@/server/auth/authorize";
-import { createProduct, updateProduct, archiveProduct, reactivateProduct } from "@/server/catalog/mutations";
+import { createProduct, updateProduct, archiveProduct, reactivateProduct, deleteProduct } from "@/server/catalog/mutations";
 import { createProductAdminActions } from "@/server/catalog/admin-actions";
 
 const actions = createProductAdminActions({ authorize: getPermissionSession,
-  create: createProduct, update: updateProduct, archive: archiveProduct, reactivate: reactivateProduct,
+  create: createProduct, update: updateProduct, archive: archiveProduct, reactivate: reactivateProduct, delete: deleteProduct,
   refresh: (id) => {
     revalidatePath("/admin/products");
     revalidatePath(`/admin/products/${id}`);
@@ -19,6 +19,7 @@ export async function createCatalogProduct(input: unknown) { return actions.crea
 export async function updateCatalogProduct(id: unknown, input: unknown) { return actions.update(id, input); }
 export async function archiveCatalogProduct(id: unknown) { return actions.archive(id); }
 export async function reactivateCatalogProduct(id: unknown) { return actions.reactivate(id); }
+export async function deleteCatalogProduct(id: unknown) { return actions.delete(id); }
 
 export async function createProductOption(kind: unknown, input: unknown) {
   const result = await createCatalogOption(kind, input);
