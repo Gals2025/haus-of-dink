@@ -120,6 +120,13 @@
       "when": 1793554039202,
       "tag": "0016_pos_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793557125282,
+      "tag": "0017_catalog_product_delete",
+      "breakpoints": true
     }
   ]
 }
