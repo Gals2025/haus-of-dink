@@ -39,7 +39,7 @@ test("admin action boundary and options execute against isolated PostgreSQL", as
   }) });
   const refreshed: string[] = [];
   const actions = createProductAdminActions({ ...writes, authorize: f.storage.authorize,
-    create: writes.createProduct, update: writes.updateProduct, archive: writes.archiveProduct, reactivate: writes.reactivateProduct,
+    create: writes.createProduct, update: writes.updateProduct, archive: writes.archiveProduct, reactivate: writes.reactivateProduct, delete: writes.deleteProduct,
     refresh: (id) => { refreshed.push(id); },
   });
   let id: string;
@@ -49,7 +49,7 @@ test("admin action boundary and options execute against isolated PostgreSQL", as
       for (const signedIn of [false, true]) {
         if (signedIn) await f.signIn("staff");
         for (const result of [await actions.create(input), await actions.update(f.data.products[0]!.id, { name: "Denied" }),
-          await actions.archive(f.data.products[0]!.id), await actions.reactivate(f.data.products[0]!.id)]) {
+          await actions.archive(f.data.products[0]!.id), await actions.reactivate(f.data.products[0]!.id), await actions.delete(f.data.products[0]!.id)]) {
           assert.ok(!result.ok); assert.equal(result.code, "FORBIDDEN");
         }
       }
@@ -93,7 +93,7 @@ test("unit: refresh failures preserve a confirmed successful result; exceptions 
   const success = { ok: true as const, productId: crypto.randomUUID(), changed: true };
   let creates = 0;
   const deps = { authorize: async () => ({}) as never, create: async () => { creates++; return success; }, update: async () => success,
-    archive: async () => success, reactivate: async () => success, refresh: () => { throw Error("private cache detail"); } };
+    archive: async () => success, reactivate: async () => success, delete: async () => success, refresh: () => { throw Error("private cache detail"); } };
   const api = createProductAdminActions(deps);
   assert.deepEqual(await api.create({}), success); assert.equal(creates, 1);
   const broken = createProductAdminActions({ ...deps, create: async () => { throw Error("private database detail"); } });
