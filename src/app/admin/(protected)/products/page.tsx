@@ -17,7 +17,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   return <div className="space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs tracking-widest text-primary">HAUS OF DINK / CATALOG</p>
       <h1 className="mt-3 text-4xl">Products</h1><p className="mt-3 text-muted-foreground">Manage your catalog. Stock quantities remain in Inventory.</p></div>
-      {canWrite && <Link href="/admin/products/new" className="rounded-md bg-primary px-4 py-3 text-sm text-primary-foreground">Create product</Link>}</header>
+      <div className="flex flex-wrap gap-3">{canWrite && <Link href="/admin/products/new" className="rounded-md bg-primary px-4 py-3 text-sm text-primary-foreground">Create product</Link>}<Link href="/admin/data-transfer" className="rounded-md border px-4 py-3 text-sm">Import / export</Link></div></header>
     {canWrite && <div className="grid max-w-3xl gap-4 sm:grid-cols-2"><OptionCreator kind="brand" /><OptionCreator kind="category" /></div>}
     <Link href="/admin/catalog" className="inline-block text-sm underline">Manage categories, brands and attributes</Link>
     {!parsed.success && <p role="alert" className="text-sm text-destructive">Invalid filters. Showing the first page with default filters.</p>}

@@ -13,7 +13,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   return <div className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs tracking-widest text-primary">HAUS OF DINK / STOCKROOM</p>
       <h1 className="mt-3 text-4xl">Inventory</h1><p className="mt-3 text-muted-foreground">Available stock = on hand − reserved. Every stock change has a history.</p></div>
-      <Link href={`/admin/inventory/movements?locationId=${filters.locationId}`} className="rounded-md border bg-card px-4 py-2 text-sm">Movement history</Link></div>
+      <div className="flex flex-wrap gap-3"><Link href="/admin/data-transfer" className="rounded-md border bg-card px-4 py-2 text-sm">Import / export</Link><Link href={`/admin/inventory/movements?locationId=${filters.locationId}`} className="rounded-md border bg-card px-4 py-2 text-sm">Movement history</Link></div></div>
     {!parsed.success && <p role="alert">Invalid filters. Showing the first page.</p>}
     <form action="/admin/inventory" className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
       <label className="min-w-40 flex-1 text-sm">Search product or SKU<input name="search" defaultValue={filters.search} maxLength={100} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
