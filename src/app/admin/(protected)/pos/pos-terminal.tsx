@@ -34,16 +34,20 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
   }).slice(0, 40);
 
   function add(product: PosProduct) {
-    if ((product.stock[locationId] ?? 0) <= 0) return;
+    if (pending || (product.stock[locationId] ?? 0) <= 0) return;
     setLines(current => {
       const existing = current.find(line => line.variantId === product.id);
-      return existing ? current.map(line => line.variantId === product.id ? { ...line, quantity: Math.min(product.stock[locationId] ?? 0, line.quantity + 1) } : line) : [...current, { variantId: product.id, quantity: 1 }];
+      return existing ? current.map(line => line.variantId === product.id ? { ...line, quantity: Math.min(10000, product.stock[locationId] ?? 0, line.quantity + 1) } : line) : [...current, { variantId: product.id, quantity: 1 }];
     });
   }
   function setQuantity(variantId: string, quantity: number) {
-    const max = products.find(p => p.id === variantId)?.stock[locationId] ?? 0;
-    if (quantity <= 0) setLines(current => current.filter(line => line.variantId !== variantId));
-    else setLines(current => current.map(line => line.variantId === variantId ? { ...line, quantity: Math.min(max, quantity) } : line));
+    if (pending || !Number.isSafeInteger(quantity) || quantity < 1) return;
+    const max = Math.min(10000, products.find(p => p.id === variantId)?.stock[locationId] ?? 0);
+    if (max < 1) return;
+    setLines(current => current.map(line => line.variantId === variantId ? { ...line, quantity: Math.min(max, quantity) } : line));
+  }
+  function removeLine(variantId: string) {
+    if (!pending) setLines(current => current.filter(line => line.variantId !== variantId));
   }
 
   function checkout() {
@@ -73,7 +77,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
       <CardHeader><CardTitle className="text-xl">Products</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-sm">Store location<select className={field} value={locationId} onChange={event => { setLocationId(event.target.value); setLines([]); }}>
+          <label className="text-sm">Store location<select disabled={pending} className={field} value={locationId} onChange={event => { setLocationId(event.target.value); setLines([]); }}>
             {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
           </select></label>
           <label className="text-sm">Search by name, SKU, or barcode<input className={input} value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => {
@@ -87,7 +91,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
         <div className="grid gap-2 sm:grid-cols-2">
           {visibleProducts.map(product => {
             const available = product.stock[locationId] ?? 0;
-            return <button key={product.id} type="button" disabled={available <= 0} onClick={() => add(product)} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-muted disabled:opacity-50">
+            return <button key={product.id} type="button" disabled={pending || available <= 0} onClick={() => add(product)} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-muted disabled:opacity-50">
               <span className="min-w-0"><span className="block truncate font-medium">{product.name}</span><span className="block text-xs text-muted-foreground">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}</span></span>
               <span className="shrink-0 text-right text-sm">{peso(product.price)}<span className="block text-xs text-muted-foreground">{product.inventoryMode === "availability_only" ? (available > 0 ? "Available" : "Not available") : `${available} in stock`}</span></span>
             </button>;
@@ -103,10 +107,17 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
         <div className="divide-y rounded-lg border">
           {lines.map(line => {
             const product = products.find(p => p.id === line.variantId)!;
-            return <div key={line.variantId} className="flex items-center gap-2 p-3 text-sm">
-              <div className="min-w-0 flex-1"><p className="truncate font-medium">{product.name}</p><p className="text-xs text-muted-foreground">{peso(product.price)} each</p></div>
-              <input aria-label={`Quantity for ${product.name}`} className="w-16 rounded-md border bg-background px-2 py-1 text-center" type="number" min="0" max={product.stock[locationId] ?? 0} value={line.quantity} onChange={event => setQuantity(line.variantId, Number(event.target.value))} />
-              <span className="w-20 text-right tabular-nums">{peso(product.price * line.quantity)}</span>
+            const max = Math.min(10000, product.stock[locationId] ?? 0);
+            const label = `${product.name} (${product.sku})`;
+            return <div key={line.variantId} className="space-y-3 p-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0"><p className="break-words font-medium">{product.name}</p><p className="text-xs text-muted-foreground">{product.sku} · {peso(product.price)} each</p></div>
+                <span className="shrink-0 text-right tabular-nums">{peso(product.price * line.quantity)}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <QuantityControl label={label} value={line.quantity} max={max} disabled={pending} onChange={quantity => setQuantity(line.variantId, quantity)} />
+                <button type="button" disabled={pending} onClick={() => removeLine(line.variantId)} aria-label={`Remove ${label} from current sale`} className="min-h-11 rounded-md px-3 text-destructive underline underline-offset-4 hover:bg-destructive/10 disabled:opacity-50">Remove</button>
+              </div>
             </div>;
           })}
           {lines.length === 0 && <p className="p-5 text-center text-sm text-muted-foreground">Add products to start a sale.</p>}
@@ -118,9 +129,31 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
         {method === "cash" && <><label className="block text-sm">Cash received (PHP)<input className={input} inputMode="decimal" value={cash} onChange={event => setCash(event.target.value)} placeholder="0.00" /></label><div className="flex justify-between text-sm"><span>Change due</span><strong>{peso(change)}</strong></div></>}
         {message && <div role="status" className="rounded-md border p-3 text-sm">{message}{receiptId && <><p className="mt-1 break-all text-xs text-muted-foreground">Sale reference: {receiptId}</p>{receipt && <p className="mt-2">{peso(receipt.total)} · {receipt.method.replaceAll("_", " ")}{receipt.method === "cash" ? ` · change ${peso(receipt.change)}` : " · paid"}</p>}<Link href="/admin/orders" className="mt-2 inline-block text-xs underline">View sales and orders</Link></>}</div>}
         <Button className="w-full" disabled={pending || !lines.length || subtotal <= 0} onClick={checkout}>{pending ? "Recording sale…" : "Complete sale"}</Button>
-        <p className="text-xs text-muted-foreground">Completing records a paid, fulfilled POS order and a SALE movement for each item.</p>
+        <p className="text-xs text-muted-foreground">Completing records a paid, fulfilled POS order. Stock is deducted only for items with stock counting enabled.</p>
       </CardContent>
     </Card>
+  </div>;
+}
+
+function QuantityControl({ label, value, max, disabled, onChange }: { label: string; value: number; max: number; disabled: boolean; onChange: (quantity: number) => void }) {
+  const [draft, setDraft] = useState({ quantity: value, text: String(value) });
+  const text = draft.quantity === value ? draft.text : String(value);
+  const button = "flex min-h-11 w-11 items-center justify-center rounded-md border bg-background text-xl hover:bg-muted disabled:opacity-40";
+  return <div className="flex items-center gap-1" role="group" aria-label={`Quantity controls for ${label}`}>
+    <button type="button" disabled={disabled || value <= 1} onClick={() => onChange(value - 1)} aria-label={`Decrease quantity for ${label}`} className={button}>−</button>
+    <input aria-label={`Quantity for ${label}`} className="min-h-11 w-16 rounded-md border bg-background px-1 text-center" type="number" inputMode="numeric" min="1" max={max} step="1" disabled={disabled || max < 1} value={text}
+      onChange={event => {
+        const next = event.target.value;
+        setDraft({ quantity: value, text: next });
+        if (next !== "" && /^\d+$/.test(next) && Number.isSafeInteger(Number(next)) && Number(next) >= 1) {
+          const quantity = Math.min(max, Number(next));
+          setDraft({ quantity, text: String(quantity) });
+          onChange(quantity);
+        }
+      }}
+      onBlur={() => setDraft({ quantity: value, text: String(value) })}
+    />
+    <button type="button" disabled={disabled || value >= max} onClick={() => onChange(value + 1)} aria-label={`Increase quantity for ${label}`} className={button}>+</button>
   </div>;
 }
 
