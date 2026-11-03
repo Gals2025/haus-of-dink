@@ -10,10 +10,19 @@ export function spreadsheetToCsv(data: ArrayBuffer): string {
   const name = workbook.SheetNames[0];
   const sheet = name ? workbook.Sheets[name] : undefined;
   if (!sheet) throw new Error("The workbook has no worksheet.");
-  const range = sheet["!fullref"] ?? sheet["!ref"];
-  if (range && utils.decode_range(range).e.c >= 16) {
-    throw new Error("The worksheet has extra columns. Use the downloaded template.");
+  // Excel's used range includes cleared/formatted cells. Inspect actual values
+  // rather than rejecting a valid template because that range extends right.
+  let lastColumn = 0, lastRow = 0;
+  for (const [address, cell] of Object.entries(sheet)) {
+    if (address.startsWith("!") || cell.v === undefined || cell.v === null || cell.v === "") continue;
+    const position = utils.decode_cell(address);
+    if (position.c >= 16) throw new Error("The worksheet has data in extra columns. Remove values outside the template columns.");
+    lastColumn = Math.max(lastColumn, position.c);
+    lastRow = Math.max(lastRow, position.r);
   }
+  // Bound conversion to populated columns; optional empty fields still retain
+  // their positions because all template headers are populated.
+  sheet["!ref"] = utils.encode_range({ s: { r: 0, c: 0 }, e: { r: lastRow, c: lastColumn } });
   const rows = utils.sheet_to_json<string[]>(sheet, { header: 1, raw: false, defval: "", blankrows: false });
   if (rows.length > 101) throw new Error("Upload up to 100 rows at a time.");
   return rows.map((row) => row.map((value) => {
