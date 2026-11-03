@@ -10,32 +10,15 @@ import { normalizeSlug } from "@/server/catalog/contracts";
 import { createProductVariant, updateProductVariant } from "@/server/catalog/variant-mutations";
 import { inventory } from "@/server/inventory/service";
 import { mainLocationId } from "@/server/inventory/contracts";
-import { parseCsv, productColumns, inventoryColumns } from "@/server/data-transfer/csv";
+import { readTransfer } from "@/server/data-transfer/import";
+import type { PriceUnit } from "@/lib/data-transfer/prices";
 
 type Kind = "products" | "inventory";
-type Parsed = { rows: Record<string, string>[]; errors: string[] };
-function readCsv(text: string, kind: Kind): Parsed {
-  try {
-    if (text.length > 500_000) return { rows: [], errors: ["File exceeds the 500 KB limit."] };
-    const csv = parseCsv(text);
-    const expected = kind === "products" ? productColumns : inventoryColumns;
-    const headers = csv.shift()?.map((h) => h.trim().toLowerCase()) ?? [];
-    if (headers.join("|") !== expected.join("|")) return { rows: [], errors: [`Template columns do not match. Download a fresh ${kind} template.`] };
-    if (!csv.length) return { rows: [], errors: ["The template has no data rows."] };
-    if (csv.length > 100) return { rows: [], errors: ["Upload up to 100 rows at a time."] };
-    const errors: string[] = [];
-    const rows = csv.map((values, index) => {
-      if (values.length !== headers.length) errors.push(`Row ${index + 2}: expected ${headers.length} columns.`);
-      return Object.fromEntries(headers.map((header, i) => [header, (values[i] ?? "").trim()]));
-    });
-    return { rows, errors };
-  } catch { return { rows: [], errors: ["CSV parsing failed. Check quotes and separators."] }; }
-}
-export async function previewTransfer(kind: Kind, text: string) {
+export async function previewTransfer(kind: Kind, text: string, priceUnit: PriceUnit = "centavos") {
   if (kind !== "products" && kind !== "inventory") return { ok: false, errors: ["Invalid import type."], count: 0 };
   const identity = await getPermissionSession("inventory:write");
   if (!identity) return { ok: false, errors: ["Access denied."], count: 0 };
-  const result = readCsv(text, kind);
+  const result = readTransfer(text, kind, priceUnit);
   if (result.rows.length) {
     const seen = new Set<string>();
     result.rows.forEach((row, i) => {
@@ -46,20 +29,19 @@ export async function previewTransfer(kind: Kind, text: string) {
       const unique = kind === "products" ? `${get("product_slug").toLowerCase()}|${get("sku").toLowerCase()}` : `${get("sku").toLowerCase()}|${get("location_id") || mainLocationId}`;
       if (seen.has(unique)) result.errors.push(`Row ${line}: duplicate product/SKU or SKU/location in this file.`);
       seen.add(unique);
-      if (kind === "products" && (!/^\d+$/.test(get("price_cents")) || [get("compare_at_price_cents"), get("cost_cents")].some((v) => v && !/^\d+$/.test(v)))) result.errors.push(`Row ${line}: prices must be integer cents.`);
       if (kind === "inventory" && (!/^\d+$/.test(get("target_on_hand")) || get("reason").length < 3)) result.errors.push(`Row ${line}: target stock must be a whole number and reason at least 3 characters.`);
     });
   }
-  return { ok: result.errors.length === 0, errors: result.errors, count: result.rows.length, text };
+  return { ok: result.errors.length === 0, errors: result.errors, count: result.rows.length, text, firstPriceCents: result.rows[0]?.price_cents, currency: result.rows[0]?.currency || "PHP" };
 }
 
-function truth(value: string) { return value === "true" || value === "1" || value === "yes"; }
+function truth(value: string) { return ["true", "1", "yes"].includes(value.toLowerCase()); }
 function money(value: string) { if (!value) return null; const n = Number(value); return Number.isSafeInteger(n) && n >= 0 ? n : NaN; }
-export async function commitTransfer(kind: Kind, text: string, batchId: string) {
-  if ((kind !== "products" && kind !== "inventory") || !/^[0-9a-f-]{36}$/i.test(batchId)) return { ok: false, errors: ["Invalid import request. Upload the CSV again."], succeeded: 0, failed: 0 };
+export async function commitTransfer(kind: Kind, text: string, batchId: string, priceUnit: PriceUnit = "centavos") {
+  if ((kind !== "products" && kind !== "inventory") || !/^[0-9a-f-]{36}$/i.test(batchId)) return { ok: false, errors: ["Invalid import request. Upload the file again."], succeeded: 0, failed: 0 };
   const identity = await getPermissionSession("inventory:write");
   if (!identity) return { ok: false, errors: ["Access denied."], succeeded: 0, failed: 0 };
-  const parsed = readCsv(text, kind);
+  const parsed = readTransfer(text, kind, priceUnit);
   if (parsed.errors.length) return { ok: false, errors: parsed.errors, succeeded: 0, failed: 0 };
   const db = getDb(), errors: string[] = [];
   let succeeded = 0;
