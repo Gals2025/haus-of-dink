@@ -42,7 +42,7 @@ export const orders = pgTable("orders", {
 export const orderItems = pgTable("order_items", {
   id: uuid("id").defaultRandom().primaryKey(), orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   variantId: uuid("variant_id").notNull().references(() => productVariants.id, { onDelete: "restrict" }),
-  reservationId: uuid("reservation_id").notNull().references(() => inventoryReservations.id, { onDelete: "restrict" }),
+  reservationId: uuid("reservation_id").references(() => inventoryReservations.id, { onDelete: "restrict" }),
   sku: varchar("sku", { length: 100 }).notNull(), name: varchar("name", { length: 240 }).notNull(),
   quantity: integer("quantity").notNull(), unitPrice: integer("unit_price").notNull(), unitCost: integer("unit_cost"),
 }, (t) => [index("order_items_order_idx").on(t.orderId), uniqueIndex("order_items_variant_unique").on(t.orderId, t.variantId), check("order_items_valid", sql`${t.quantity} BETWEEN 1 AND 1000000 AND ${t.unitPrice} >= 0 AND (${t.unitCost} IS NULL OR ${t.unitCost} >= 0)`)]);

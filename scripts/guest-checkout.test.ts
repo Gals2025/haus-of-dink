@@ -11,7 +11,7 @@ import { managementLock } from "../src/server/admin/queries";
 
 const contact = { name: "Guest Buyer", email: "guest@example.test", phone: "09123456789", address: "Davao City delivery address" };
 test("guest input rejects injected privileges, prices, bad contacts and duplicate lines", () => {
-  const input = { action: "order.guest", contact, items: [{ variantId: crypto.randomUUID(), quantity: 1 }], notes: "", promotionCode: "" };
+  const input = { action: "order.guest", fulfillment: "delivery", proofPath: "payment-proofs/00000000-0000-4000-8000-000000000001", contact, items: [{ variantId: crypto.randomUUID(), quantity: 1 }], notes: "", promotionCode: "" };
   assert.equal(guestInput.safeParse(input).success, true);
   for (const extra of [{ customerId: crypto.randomUUID() }, { locationId: crypto.randomUUID() }, { total: 1 }, { action: "order.pay" }]) assert.equal(guestInput.safeParse({ ...input, ...extra }).success, false);
   for (const change of [{ email: "bad" }, { phone: "" }, { address: "" }]) assert.equal(guestInput.safeParse({ ...input, contact: { ...contact, ...change } }).success, false);
@@ -29,7 +29,7 @@ test("guest orders require no account, preserve contacts, reserve atomically and
     const vid = f.data.variants[0]!.id;
     await db.execute(sql`select inventory_apply(${crypto.randomUUID()}::uuid,${vid}::uuid,${location}::uuid,'PURCHASE',10,'Guest test receipt','fixture',null,${staff.user.id})`);
     await db.insert(schema.customers).values({ ...contact, name: "Original profile", address: "Original address" });
-    const input = guestInput.parse({ action: "order.guest", contact, items: [{ variantId: vid, quantity: 2 }], notes: "Guest notes", promotionCode: "" });
+    const input = guestInput.parse({ action: "order.guest", fulfillment: "delivery", proofPath: "payment-proofs/00000000-0000-4000-8000-000000000001", contact, items: [{ variantId: vid, quantity: 2 }], notes: "Guest notes", promotionCode: "" });
     const submit = async (request: string, data = input, rateKey = "guest:test") => db.transaction(async tx => {
       await tx.execute(managementLock);
       return (await tx.execute<{ id: string }>(guestWrite(request, data, rateKey))).rows[0]?.id;
@@ -62,7 +62,7 @@ test("guest orders require no account, preserve contacts, reserve atomically and
       const order = (await rows(sql`select * from orders where id=${request}::uuid`))[0]!;
       const movements = await rows<{ actor: string; reference: string }>(movementsQuery(staff, stockFilters.parse({ locationId: location })));
       assert.ok(movements.some(m => m.actor === "Guest checkout" && m.reference === request));
-      assert.equal(order.actor_id, null); assert.equal(order.status, "pending"); assert.equal(order.payment_status, "unpaid");
+      assert.equal(order.actor_id, null); assert.equal(order.status, "awaiting_confirmation"); assert.equal(order.payment_status, "unpaid");
       assert.equal(order.total, f.data.variants[0]!.price * 2); assert.deepEqual(order.customer_snapshot, contact);
       assert.equal((await rows(sql`select name from customers where email=${contact.email}`))[0]!.name, "Original profile");
       assert.equal((await rows(sql`select count(*)::int n from "user"`))[0]!.n, 1, "No customer authentication account created");
@@ -102,7 +102,7 @@ test("guest orders require no account, preserve contacts, reserve atomically and
       assert.equal(order.total, f.data.variants[0]!.price - Number(order.discount) + 15000);
       assert.equal((await rows(sql`select count(*)::int n from customers where email=${nextContact.email}`))[0]!.n, 1);
       const before = (await rows(sql`select reserved from inventory_balances where variant_id=${vid}::uuid and location_id=${location}::uuid`))[0]!.reserved;
-      await db.execute(commerceWrite(staff, crypto.randomUUID(), { action: "order.cancel", id }));
+      await db.execute(commerceWrite(staff, crypto.randomUUID(), { action: "order.reject", id, reason: "Test cancellation" }));
       assert.equal((await rows(sql`select reserved from inventory_balances where variant_id=${vid}::uuid and location_id=${location}::uuid`))[0]!.reserved, Number(before) - 1);
       assert.equal((await rows(sql`select used from promotions where code='GUEST10'`))[0]!.used, 0);
       await db.execute(sql`update product_variants set status='inactive' where id=${vid}::uuid`);
@@ -112,6 +112,7 @@ test("guest orders require no account, preserve contacts, reserve atomically and
     });
     await t.test("staff can pay and fulfill guest orders; guest cannot invoke admin transitions", async () => {
       await assert.rejects(db.execute(sql`select commerce_execute(null,${crypto.randomUUID()}::uuid,${JSON.stringify({ action: "order.pay", id: request, reference: "fake payment" })}::jsonb)`));
+      await db.execute(commerceWrite(staff, crypto.randomUUID(), { action: "order.confirm", id: request }));
       await db.execute(commerceWrite(staff, crypto.randomUUID(), { action: "order.pay", id: request, reference: "GCash received 123" }));
       await db.execute(commerceWrite(staff, crypto.randomUUID(), { action: "order.fulfill", id: request }));
       const detail = (await rows<{ status: string; history: { actor: string }[] }>(orderDetailQuery(staff, request)))[0]!;

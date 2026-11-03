@@ -127,6 +127,13 @@
       "when": 1793557125282,
       "tag": "0017_catalog_product_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793695328817,
+      "tag": "0018_optional_stock_counting",
+      "breakpoints": true
     }
   ]
 }

@@ -11,4 +11,4 @@ export const posSaleInput = z.strictObject({
 
 export type PosSaleInput = z.infer<typeof posSaleInput>;
 export type PosLocation = { id: string; name: string };
-export type PosProduct = { id: string; name: string; sku: string; barcode: string | null; price: number; stock: Record<string, number> };
+export type PosProduct = { id: string; name: string; sku: string; barcode: string | null; price: number; inventoryMode?: string; stock: Record<string, number> };

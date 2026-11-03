@@ -24,7 +24,7 @@ export function createReorderSettings(deps: {
         target as materialized (select v.product_id, coalesce(b.reorder_level, 5) as before_level
           from product_variants v cross join inventory_locations l
           left join inventory_balances b on b.variant_id = v.id and b.location_id = l.id
-          where v.id = ${v.variantId}::uuid and l.id = ${v.locationId}::uuid and exists(select 1 from actor)),
+          where v.inventory_mode='counted' and v.id = ${v.variantId}::uuid and l.id = ${v.locationId}::uuid and exists(select 1 from actor)),
         changed as (insert into inventory_balances (variant_id, location_id, reorder_level)
           select ${v.variantId}::uuid, ${v.locationId}::uuid, ${v.reorderLevel} from target where before_level <> ${v.reorderLevel}
           on conflict (variant_id, location_id) do update set reorder_level = excluded.reorder_level, updated_at = clock_timestamp()

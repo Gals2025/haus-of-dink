@@ -16,7 +16,7 @@ export function spreadsheetToCsv(data: ArrayBuffer): string {
   for (const [address, cell] of Object.entries(sheet)) {
     if (address.startsWith("!") || cell.v === undefined || cell.v === null || cell.v === "") continue;
     const position = utils.decode_cell(address);
-    if (position.c >= 16) throw new Error("The worksheet has data in extra columns. Remove values outside the template columns.");
+    if (position.c >= 18) throw new Error("The worksheet has data in extra columns. Remove values outside the template columns.");
     lastColumn = Math.max(lastColumn, position.c);
     lastRow = Math.max(lastRow, position.r);
   }

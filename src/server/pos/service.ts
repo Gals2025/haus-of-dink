@@ -14,8 +14,8 @@ export async function getPosOptions() {
     db.execute<PosLocation>(sql`with actor as materialized (${catalogActor(identity, "pos:sell")})
       select id, name from inventory_locations where exists(select 1 from actor) order by name`),
     db.execute<PosProduct>(sql`with actor as materialized (${catalogActor(identity, "pos:sell")})
-      select v.id, p.name, v.sku, v.barcode, v.price,
-        coalesce(jsonb_object_agg(l.id::text, coalesce(b.on_hand-b.reserved,0)) filter (where l.id is not null), '{}'::jsonb) as stock
+      select v.id, p.name, v.sku, v.barcode, v.price, v.inventory_mode as "inventoryMode",
+        coalesce(jsonb_object_agg(l.id::text, case when not v.sales_enabled then 0 when v.inventory_mode='availability_only' then 10000 else coalesce(b.on_hand-b.reserved,0) end) filter (where l.id is not null), '{}'::jsonb) as stock
       from product_variants v join products p on p.id=v.product_id
       left join inventory_locations l on true
       left join inventory_balances b on b.variant_id=v.id and b.location_id=l.id

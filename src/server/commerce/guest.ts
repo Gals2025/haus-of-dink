@@ -8,7 +8,7 @@ export const shopQuery = sql`select v.id,p.name,v.sku,v.price,
   br.name as brand,c.name as category,p.short_description as description,
   v.compare_at_price as "compareAtPrice",p.featured,p.new_arrival as "newArrival",
   image.blob_url as "imageUrl",image.alt_text as "imageAlt",
-  least(10,coalesce(max(b.on_hand-b.reserved),0))::int as available
+  (case when not v.sales_enabled then 0 when v.inventory_mode='availability_only' then 10 else least(10,coalesce(max(b.on_hand-b.reserved),0)) end)::int as available
   from product_variants v join products p on p.id=v.product_id
   join brands br on br.id=p.brand_id
   join categories c on c.id=p.category_id

@@ -27,7 +27,7 @@ export const stockFilters = z.object({
 }).strict();
 export type StockChange = z.infer<typeof stockChange>;
 export type StockFilters = z.infer<typeof stockFilters>;
-export type StockRow = { variantId: string; sku: string; name: string; onHand: number; reserved: number; available: number; reorderLevel: number };
+export type StockRow = { inventoryMode: string; salesEnabled: boolean; variantId: string; sku: string; name: string; onHand: number; reserved: number; available: number; reorderLevel: number };
 export type MovementRow = { id: string; sku: string; location: string; type: string; quantity: number; beforeOnHand: number; afterOnHand: number; beforeReserved: number; afterReserved: number; reason: string; reference: string; actor: string; createdAt: string };
 export type StockResult = { ok: true; movementId: string } | { ok: false; error: string };
 export const pageSize = 25;

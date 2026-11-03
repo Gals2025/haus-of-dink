@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { eq, sql } from "drizzle-orm";
+import { configureInventoryQuery } from "../src/server/inventory/modes";
 import { catalogFixture } from "./catalog-fixture";
 import { managementLock } from "../src/server/admin/queries";
 import { createCatalogManagement, type ManagementDeps } from "../src/server/catalog/management";
@@ -83,7 +84,7 @@ test("variant edits assign attributes atomically, reject duplicate combinations 
   }) });
   const products = createCatalogMutations({ authorize: f.storage.authorize, change: f.change });
   try {
-    await f.signIn();
+    const identity = await f.signIn();
     const product = await products.createProduct({ name: "Variant managed", slug: "variant-managed", brandId: f.data.brands[0]!.id, categoryId: f.data.categories[0]!.id }); assert.ok(product.ok);
     const color = await m.save("attribute", null, { name: "Color", slug: "color" }); assert.ok(color.ok);
     const pink = await m.save("value", null, { value: "Pink", slug: "pink", attributeId: color.id }); assert.ok(pink.ok);
@@ -110,6 +111,7 @@ test("variant edits assign attributes atomically, reject duplicate combinations 
     assert.equal(detail.product.variants[0]?.attributes.length, 0);
     assert.equal(detail.product.variants[0]?.status, "inactive");
     assert.ok((await mutate({ ...input, attributeValueIds: [] }, created.variantId)).ok);
+    await db.execute(configureInventoryQuery(identity, {variantId: created.variantId,mode:"counted",available:true,counts:{[mainLocationId]:0}}));
     const inventory = createInventory({ authorize: f.storage.authorize, apply: (query) => db.transaction(async (tx) => {
       await tx.execute(managementLock); return (await tx.execute<{ id: string }>(query)).rows[0]?.id;
     }) });

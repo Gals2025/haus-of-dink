@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { eq, sql } from "drizzle-orm";
+import { configureInventoryQuery } from "../src/server/inventory/modes";
 import { catalogFixture } from "./catalog-fixture";
 import { managementLock } from "../src/server/admin/queries";
 import { createVariantMutations } from "../src/server/catalog/variant-mutations";
@@ -40,6 +41,7 @@ test("product → SKU → stock receipt, validation, authorization and atomic au
     const duplicate = await create({ ...input, sku: "new-pink" }); assert.ok(!duplicate.ok); assert.equal(duplicate.code, "CONFLICT");
     const withBarcode = await create({ ...input, sku: "BARCODE-A", barcode: "123456789" }); assert.ok(withBarcode.ok);
     const duplicateBarcode = await create({ ...input, sku: "BARCODE-B", barcode: "123456789" }); assert.ok(!duplicateBarcode.ok); assert.equal(duplicateBarcode.code, "CONFLICT");
+    await db.execute(configureInventoryQuery(identity, {variantId: created.variantId,mode:"counted",available:true,counts:{[mainLocationId]:0}}));
     const inventory = createInventory({ authorize: f.storage.authorize, apply: (query) => db.transaction(async (tx) => {
       await tx.execute(managementLock); return (await tx.execute<{ id: string }>(query)).rows[0]?.id;
     }) });

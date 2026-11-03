@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { sql } from "drizzle-orm";
 import { readFile, mkdtemp, mkdir, writeFile, copyFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -69,7 +70,8 @@ test("inventory foundation upgrades existing stock and enforces ledger reference
     await db.insert(schema.brands).values(fixtures.brands);
     await db.insert(schema.categories).values(fixtures.categories);
     await db.insert(schema.products).values(fixtures.products);
-    await db.insert(schema.productVariants).values(fixtures.variants);
+    // Seed against the historical schema before inventory-mode columns exist.
+    await db.execute(sql`insert into product_variants(id,product_id,sku,price,compare_at_price,cost) values ${sql.join(fixtures.variants.map(v=>sql`(${v.id}::uuid,${v.productId}::uuid,${v.sku},${v.price},${v.compareAtPrice},${v.cost})`),sql`, `)}`);
     await client.query('INSERT INTO "user"(id,name,email,active,role) VALUES ($1, $1, $2, true, \'admin\')', [actor, "foundation@example.test"]);
     const opening = await client.query<{ id: string }>("SELECT inventory_apply($1::uuid,$2::uuid,$3::uuid,'OPENING_STOCK',10,'Existing opening','',null,$4) AS id", [crypto.randomUUID(), variant, location, actor]);
     const originalId = opening.rows[0]!.id;
@@ -78,6 +80,7 @@ test("inventory foundation upgrades existing stock and enforces ledger reference
     await migrate(db, { migrationsFolder: folder });
     await t.test("upgrade preserves existing stock, history, and original writer interface", async () => {
       assert.deepEqual((await client.query("SELECT * FROM inventory_balances")).rows, before);
+      assert.ok((await client.query<{inventory_mode:string;sales_enabled:boolean}>("SELECT inventory_mode,sales_enabled FROM product_variants")).rows.every(v=>v.inventory_mode==="counted"&&v.sales_enabled));
       const row = (await client.query<{ source_location_id: string | null; destination_location_id: string }>("SELECT * FROM inventory_movements WHERE id=$1", [originalId])).rows[0]!;
       assert.equal(row.source_location_id, null); assert.equal(row.destination_location_id, location);
       assert.equal((await client.query("SELECT * FROM drizzle.__drizzle_migrations")).rows.length, journal.entries.length);

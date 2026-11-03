@@ -78,3 +78,64 @@ balance can be configured before receiving its opening stock. Changes recheck
 current write access under the shared management lock and write a catalog audit
 update atomically. Saving the same value produces no additional audit record.
 No new migration is required; the catalog audit migration must be installed.
+
+## Optional counting and availability (migration 0018)
+
+`product_variants.inventory_mode` is either `counted` or `availability_only`.
+`sales_enabled` is a manual sales switch for both modes. Existing variants migrate
+as counted with sales enabled, preserving every balance, reservation and movement.
+New variants default to availability only; a super administrator can change the
+new-SKU default under Settings → Inventory defaults. Active availability-only
+variants start with sales enabled. Product/variant active status still applies.
+
+Inventory → Stock counting & availability provides per-SKU selection and bulk
+updates. Inventory writers can change selected modes or pause/resume sales.
+Changing mode requires no open orders and no outstanding reservations. Enabling
+counting requires an explicit physical count at every location, including zero;
+counts reconcile retained balances through the existing append-only ledger.
+Changes and their audits commit together. Disabling counting retains prior stock
+history. Pausing sales is allowed while orders are open and does not stop their
+fulfillment or cancellation.
+
+Availability-only orders do not create balances, reservations or stock movements.
+Their order items keep a null reservation ID; quantities and financial snapshots
+are still recorded. Mixed carts, guest checkout, POS, cancellation and pickup
+expiry process only the counted lines through the inventory ledger. Purchasing
+availability-only items does not toggle availability automatically. These items
+cannot prevent overselling unknown physical stock. Public checkout retains its
+10-per-line limit and POS its 10,000-per-line limit; the capacity returned to those
+interfaces for availability-only items is an order limit, not a stock count.
+
+Low-stock filters and reorder controls apply only to counted SKUs. Product
+transfers add optional `inventory_mode` and `availability` columns; older templates
+remain accepted. Blank fields preserve existing values or the new-SKU default.
+To import a previously uncounted SKU as counted, first enable counting with
+physical counts in Inventory settings. Stock-count imports reject availability-only
+SKUs and never silently enable tracking.
+
+### Deployment
+
+This change must not deploy before its database migration. Identify the target
+Neon project/branch/database, take the normal database backup or restore point,
+and configure its `DATABASE_URL` through secure environment settings (never chat).
+From the release checkout, after target confirmation:
+
+```sh
+npm ci --no-audit --no-fund
+npm run db:check
+npm run db:migrate
+```
+
+Use Drizzle's migration runner so schema changes and migration bookkeeping stay
+consistent. Do not paste only parts of `0018_optional_stock_counting.sql` into a
+SQL editor or edit previously applied migrations. No migration runs during the
+build or a web request. Coordinate the migration and application deployment in a
+maintenance window; pause new catalog writes during that interval because the
+new default applies immediately after the migration.
+
+Verify migration 0018 is recorded and existing variants remain counted, then
+release the application commit. Smoke-test one counted SKU and one availability-
+only SKU, a mixed order, sales pause, cancellation and POS. The migration has been
+validated against isolated PostgreSQL databases; that does not validate a live
+production connection or migrate it automatically. Keep history tables intact if
+rolling back and restore the database and application together if necessary.

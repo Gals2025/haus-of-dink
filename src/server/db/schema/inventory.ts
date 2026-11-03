@@ -65,3 +65,8 @@ export const inventoryMovements = pgTable("inventory_movements", {
   index("inventory_movements_source_idx").on(t.sourceLocationId),
   index("inventory_movements_destination_idx").on(t.destinationLocationId),
   uniqueIndex("inventory_one_opening").on(t.variantId, t.locationId).where(sql`${t.type} = 'OPENING_STOCK'`)]);
+
+export const inventorySettings = pgTable("inventory_settings", {
+  id: integer("id").primaryKey().default(1),
+  defaultMode: text("default_mode").default("availability_only").notNull(),
+}, (t) => [check("inventory_settings_valid", sql`${t.id} = 1 AND ${t.defaultMode} IN ('counted', 'availability_only')`)]);

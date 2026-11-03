@@ -6,7 +6,7 @@ import { normalizePrice } from "../src/lib/data-transfer/prices";
 import { readTransfer } from "../src/server/data-transfer/import";
 import { makeCsv, productColumns } from "../src/server/data-transfer/csv";
 
-const row = ["paddle", "Paddle", "", "", "Brand", "Category", "Active", "TRUE", "FALSE", "00123", "000456", "14,995.00", "", "165.90", "PHP", "Active"];
+const row = ["paddle", "Paddle", "", "", "Brand", "Category", "Active", "TRUE", "FALSE", "00123", "000456", "14,995.00", "", "165.90", "PHP", "Active", "", ""];
 
 for (const format of ["xls", "xlsx"] as const) {
   test(`${format}: formatted peso prices and mixed-case statuses import correctly`, () => {
@@ -53,4 +53,20 @@ test("money normalization never rounds or guesses units", () => {
     assert.throws(() => normalizePrice(invalid, "pesos"));
   }
   assert.throws(() => normalizePrice("165.90", "centavos"), /Fractional centavos/);
+});
+
+
+test("legacy templates preserve modes and extended templates validate availability", () => {
+ const legacy=makeCsv([productColumns.slice(0,-2),row.slice(0,-2)]);
+ const parsed=readTransfer(legacy,"products","pesos");
+ assert.deepEqual(parsed.errors,[]);
+ assert.equal(parsed.rows[0]?.inventory_mode,"");
+ assert.equal(parsed.rows[0]?.availability,"");
+ const extended=[...row]; extended[16]="Availability_Only";extended[17]="Unavailable";
+ const imported=readTransfer(makeCsv([productColumns,extended]),"products","pesos");
+ assert.deepEqual(imported.errors,[]);
+ assert.equal(imported.rows[0]?.inventory_mode,"availability_only");
+ assert.equal(imported.rows[0]?.availability,"unavailable");
+ extended[16]="unlimited";
+ assert.ok(readTransfer(makeCsv([productColumns,extended]),"products","pesos").errors.length>0);
 });

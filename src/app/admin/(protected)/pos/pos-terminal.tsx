@@ -89,7 +89,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
             const available = product.stock[locationId] ?? 0;
             return <button key={product.id} type="button" disabled={available <= 0} onClick={() => add(product)} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-muted disabled:opacity-50">
               <span className="min-w-0"><span className="block truncate font-medium">{product.name}</span><span className="block text-xs text-muted-foreground">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}</span></span>
-              <span className="shrink-0 text-right text-sm">{peso(product.price)}<span className="block text-xs text-muted-foreground">{available} in stock</span></span>
+              <span className="shrink-0 text-right text-sm">{peso(product.price)}<span className="block text-xs text-muted-foreground">{product.inventoryMode === "availability_only" ? (available > 0 ? "Available" : "Not available") : `${available} in stock`}</span></span>
             </button>;
           })}
           {visibleProducts.length === 0 && <p className="p-4 text-sm text-muted-foreground">No matching products.</p>}

@@ -19,7 +19,7 @@ export function applyStockQuery(identity: AuthSession, change: StockChange) {
 }
 export function stockQuery(identity: AuthSession, filters: StockFilters) {
   const search = `%${filters.search.replace(/[\\%_]/g, "\\$&")}%`;
-  return sql`select v.id as "variantId", v.sku, p.name,
+  return sql`select v.id as "variantId", v.sku, p.name, v.inventory_mode as "inventoryMode", v.sales_enabled as "salesEnabled",
     coalesce(b.on_hand, 0)::int as "onHand", coalesce(b.reserved, 0)::int as reserved,
     (coalesce(b.on_hand, 0) - coalesce(b.reserved, 0))::int as available,
     coalesce(b.reorder_level, 5)::int as "reorderLevel"
@@ -28,8 +28,8 @@ export function stockQuery(identity: AuthSession, filters: StockFilters) {
     where exists (${actor(identity, "inventory:read")})
     and (${filters.search === ""} or v.sku ilike ${search} or p.name ilike ${search})
     and (${filters.status === "all"} or
-      (${filters.status === "out"} and coalesce(b.on_hand, 0) - coalesce(b.reserved, 0) = 0) or
-      (${filters.status === "low"} and coalesce(b.on_hand, 0) - coalesce(b.reserved, 0) <= coalesce(b.reorder_level, 5)))
+      (${filters.status === "out"} and (not v.sales_enabled or (v.inventory_mode='counted' and coalesce(b.on_hand, 0) - coalesce(b.reserved, 0) = 0))) or
+      (${filters.status === "low"} and v.inventory_mode='counted' and coalesce(b.on_hand, 0) - coalesce(b.reserved, 0) <= coalesce(b.reorder_level, 5)))
     order by lower(p.name), lower(v.sku), v.id limit ${pageSize + 1} offset ${(filters.page - 1) * pageSize}`;
 }
 export function locationsQuery(identity: AuthSession) {

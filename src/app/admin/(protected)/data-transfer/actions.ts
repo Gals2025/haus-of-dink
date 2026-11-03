@@ -11,6 +11,7 @@ import { createProductVariant, updateProductVariant } from "@/server/catalog/var
 import { inventory } from "@/server/inventory/service";
 import { mainLocationId } from "@/server/inventory/contracts";
 import { readTransfer } from "@/server/data-transfer/import";
+import { configureInventory } from "@/server/inventory/modes";
 import type { PriceUnit } from "@/lib/data-transfer/prices";
 
 type Kind = "products" | "inventory";
@@ -50,6 +51,11 @@ export async function commitTransfer(kind: Kind, text: string, batchId: string, 
     const get = (key: string) => row[key] ?? "";
     try {
       if (kind === "products") {
+        const [oldVariant] = await db.select().from(productVariants).where(sql`lower(${productVariants.sku}) = lower(${get("sku")})`).limit(1);
+        if (get("inventory_mode") === "counted") {
+          const currentMode = oldVariant?.inventoryMode ?? (await db.execute<{mode:string}>(sql`select inventory_default_mode() as mode`)).rows[0]?.mode;
+          if (currentMode !== "counted") throw new Error("Enable stock counting in Inventory → Stock counting & availability and enter physical counts before importing this SKU as counted.");
+        }
         const required = ["product_slug", "product_name", "brand", "category", "sku", "price_cents"];
         if (required.some((key) => !row[key])) throw new Error("Product slug, name, brand, category, SKU and price are required.");
         const [brand] = await db.select().from(brands).where(sql`lower(${brands.name}) = lower(${get("brand")})`).limit(1);
@@ -64,15 +70,20 @@ export async function commitTransfer(kind: Kind, text: string, batchId: string, 
         if (!productResult.ok) throw new Error(productResult.error);
         const productId = productResult.productId;
         const variant = { productId, sku: get("sku"), barcode: get("barcode") || null, price, compareAtPrice, cost, currency: (get("currency") || "PHP").toUpperCase(), status: get("variant_status") || "active", attributeValueIds: [] };
-        const [oldVariant] = await db.select().from(productVariants).where(sql`lower(${productVariants.sku}) = lower(${get("sku")})`).limit(1);
         const variantResult = oldVariant ? await updateProductVariant(oldVariant.id, variant) : await createProductVariant(variant);
         if (!variantResult.ok) throw new Error(variantResult.error);
+        if (get("inventory_mode") || get("availability")) await configureInventory([{
+          variantId: variantResult.variantId,
+          ...(get("inventory_mode") ? {mode:get("inventory_mode")} : {}),
+          ...(get("availability") ? {available:get("availability")==="available"} : {}),
+        }]);
       } else {
         if (!get("sku") || !/^\d+$/.test(get("target_on_hand")) || !get("reason") || get("reason").length < 3) throw new Error("SKU, whole target quantity and reason are required.");
         const [variant] = await db.select().from(productVariants).where(sql`lower(${productVariants.sku}) = lower(${get("sku")})`).limit(1);
         const locationId = get("location_id") || mainLocationId;
         const [location] = await db.select().from(inventoryLocations).where(eq(inventoryLocations.id, locationId)).limit(1);
         if (!variant || !location) throw new Error("SKU or location was not found.");
+        if (variant.inventoryMode !== "counted") throw new Error("Stock counting is disabled for this SKU. Use product import or inventory settings to change availability.");
         const [balance] = await db.select().from(inventoryBalances).where(sql`${inventoryBalances.variantId} = ${variant.id} and ${inventoryBalances.locationId} = ${locationId}`).limit(1);
         const difference = Number(get("target_on_hand")) - (balance?.onHand ?? 0);
         if (difference !== 0) {

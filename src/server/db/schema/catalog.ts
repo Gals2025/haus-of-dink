@@ -66,6 +66,8 @@ export const products = pgTable("products", {
 export const productVariants = pgTable("product_variants", {
   id: uuid("id").defaultRandom().primaryKey(),
   productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  inventoryMode: text("inventory_mode").default(sql`inventory_default_mode()`).notNull(),
+  salesEnabled: boolean("sales_enabled").default(true).notNull(),
   sku: varchar("sku", { length: 100 }).notNull(),
   barcode: varchar("barcode", { length: 100 }).unique(),
   // All money is integer minor units; PHP 1,500.00 = 150000 centavos.
@@ -76,6 +78,7 @@ export const productVariants = pgTable("product_variants", {
   status: catalogStatus("status").default("active").notNull(),
   ...timestamps(),
 }, (t) => [
+  check("product_variants_inventory_mode", sql`${t.inventoryMode} IN ('counted', 'availability_only')`),
   uniqueIndex("product_variants_sku_ci_unique").on(sql`lower(${t.sku})`),
   unique("product_variants_product_id_id_unique").on(t.productId, t.id),
   index("product_variants_product_status_idx").on(t.productId, t.status),

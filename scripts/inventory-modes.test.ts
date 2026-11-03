@@ -1,0 +1,88 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { sql,eq } from "drizzle-orm";
+import { catalogFixture } from "./catalog-fixture";
+import { configureInventoryQuery } from "../src/server/inventory/modes";
+import { shopQuery,guestWrite } from "../src/server/commerce/guest";
+import { mainLocationId } from "../src/server/inventory/contracts";
+
+test("mixed inventory modes preserve counted stock and support availability-only orders", async () => {
+ const f=await catalogFixture();
+ const because=(text:string)=>(error:unknown)=>String((error as {cause?:{message?:string}})?.cause?.message ?? error).includes(text);
+ try {
+  const identity=await f.signIn("super_admin");
+  const [a,b]=f.data.variants; assert.ok(a&&b);
+  const configure=(id:string,mode:"counted"|"availability_only",available=true,counts:Record<string,number>={})=>f.db.execute(configureInventoryQuery(identity,{variantId:id,mode,available,counts}));
+  const stock=(id:string,type:string,quantity:number)=>f.db.execute(sql`select inventory_apply(${crypto.randomUUID()}::uuid,${id}::uuid,${mainLocationId}::uuid,${type}::inventory_movement_type,${quantity},'Test physical stock','test',null,${identity.user.id})`);
+  await stock(a.id,"PURCHASE",5);
+  await configure(b.id,"availability_only");
+  await assert.rejects(stock(b.id,"PURCHASE",2),because("Stock counting is disabled"));
+  let shop=await f.db.execute(shopQuery);
+  assert.equal(shop.rows.find(r=>r.id===b.id)?.available,10);
+  const [customer]=await f.db.insert(f.schema.customers).values({name:"Buyer",email:"modes@example.test",phone:"09123456789",address:"Test address"}).returning(); assert.ok(customer);
+  const execute=(input:Record<string,unknown>)=>f.db.execute(sql`select commerce_execute(${identity.user.id},${crypto.randomUUID()}::uuid,${JSON.stringify(input)}::jsonb) as id`);
+  const orderInput={action:"order.create",customerId:customer.id,locationId:mainLocationId,items:[{variantId:a.id,quantity:2},{variantId:b.id,quantity:3}],notes:"Mixed cart",promotionCode:""};
+  const placed=await execute(orderInput); const id=String(placed.rows[0]?.id);
+  const items=await f.db.select().from(f.schema.orderItems).where(eq(f.schema.orderItems.orderId,id));
+  assert.equal(items.find(i=>i.variantId===b.id)?.reservationId,null);
+  assert.ok(items.find(i=>i.variantId===a.id)?.reservationId);
+  await assert.rejects(configure(b.id,"counted",true,{[mainLocationId]:10}),because("Finish or cancel"));
+  await execute({action:"order.cancel",id});
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,a.id)))[0]?.reserved,0);
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,b.id))).length,0);
+  const second=await execute(orderInput); const secondId=String(second.rows[0]?.id);
+  await configure(a.id,"counted",false);
+  await execute({action:"order.pay",id:secondId,reference:"Payment received"});
+  await execute({action:"order.fulfill",id:secondId});
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,a.id)))[0]?.onHand,3);
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,b.id))).length,0);
+  await configure(a.id,"counted",true);
+  await configure(b.id,"availability_only",false);
+  shop=await f.db.execute(shopQuery); assert.equal(shop.rows.find(r=>r.id===b.id)?.available,0);
+  await assert.rejects(execute(orderInput));
+  await configure(b.id,"availability_only",true);
+  const posReq=crypto.randomUUID();
+  const payload={action:"pos.sale",requestId:posReq,locationId:mainLocationId,paymentMethod:"cash",amountTendered:10000000,items:[{variantId:a.id,quantity:1},{variantId:b.id,quantity:2}]};
+  await f.db.execute(sql`select pos_execute(${identity.user.id},${posReq}::uuid,${JSON.stringify(payload)}::jsonb)`);
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,a.id)))[0]?.onHand,2);
+  // Guest checkout must find a location even without a balance for this SKU.
+  const req=crypto.randomUUID();
+  const guest={action:"order.guest" as const,contact:{name:"Guest",email:"",phone:"09987654321",address:""},fulfillment:"pickup" as const,pickupPayment:"upon_pickup" as const,items:[{variantId:b.id,quantity:1}],promotionCode:"",notes:""};
+  await f.db.execute(guestWrite(req,guest,"modes-guest"));
+  await assert.rejects(configure(b.id,"counted",true,{[mainLocationId]:0}));
+  await f.db.execute(sql`update orders set hold_expires_at=clock_timestamp()-interval '1 day' where id=${req}::uuid`);
+  await f.db.execute(sql`select expire_pickup_orders()`);
+  const manualReq=crypto.randomUUID();
+  await f.db.execute(guestWrite(manualReq,guest,"modes-manual-cancel"));
+  await execute({action:"order.cancel",id:manualReq});
+  assert.equal((await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.id,b.id)))[0]?.salesEnabled,true);
+  await assert.rejects(configure(b.id,"counted"),because("physical stock count"));
+  await configure(b.id,"counted",true,{[mainLocationId]:0});
+  assert.equal((await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.id,b.id)))[0]?.inventoryMode,"counted");
+  await stock(b.id,"PURCHASE",3);
+  await configure(b.id,"availability_only",false);
+  await configure(b.id,"counted",true,{[mainLocationId]:1});
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,b.id)))[0]?.onHand,1);
+  // New variants inherit the store default; fixtures remain explicitly counted.
+  const created=await f.db.insert(f.schema.productVariants).values({productId:a.productId,sku:"DEFAULT-MODE",price:100}).returning();
+  assert.equal(created[0]?.inventoryMode,"availability_only");
+  await f.db.insert(f.schema.inventorySettings).values({id:1,defaultMode:"counted"});
+  const counted=await f.db.insert(f.schema.productVariants).values({productId:a.productId,sku:"COUNTED-DEFAULT",price:100}).returning();
+  assert.equal(counted[0]?.inventoryMode,"counted");
+  assert.equal((await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.id,created[0]!.id)))[0]?.inventoryMode,"availability_only");
+  const secondLocation=crypto.randomUUID();
+  await f.db.insert(f.schema.inventoryLocations).values({id:secondLocation,name:"Second location"});
+  await configure(b.id,"availability_only");
+  await assert.rejects(configure(b.id,"counted",true,{[mainLocationId]:0}),because("every location"));
+  await configure(b.id,"counted",true,{[mainLocationId]:0,[secondLocation]:0});
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,b.id)))[0]?.onHand,0);
+  await assert.rejects(f.db.transaction(async tx=>{
+    await tx.execute(configureInventoryQuery(identity,{variantId:a.id,available:false,counts:{}}));
+    await tx.execute(configureInventoryQuery(identity,{variantId:crypto.randomUUID(),available:false,counts:{}}));
+  }));
+  assert.equal((await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.id,a.id)))[0]?.salesEnabled,true,"bulk failure must roll back earlier selections");
+  await f.db.update(f.schema.user).set({role:"staff"}).where(eq(f.schema.user.id,identity.user.id));
+  await assert.rejects(configure(a.id,"availability_only"),because("Access denied"));
+  assert.equal((await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.id,a.id)))[0]?.inventoryMode,"counted");
+ } finally {await f.client.close();}
+});

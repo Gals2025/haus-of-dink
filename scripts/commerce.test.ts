@@ -35,7 +35,7 @@ test("orders, customers, promotions, settings and reports commit atomically with
     await db.update(schema.products).set({status:"active"});
     await db.execute(sql`select inventory_apply(${crypto.randomUUID()}::uuid,${vid}::uuid,${location}::uuid,'PURCHASE',10,'Test receipt','fixture',null,${identity.user.id})`);
     await db.execute(sql`select inventory_apply(${crypto.randomUUID()}::uuid,${vid2}::uuid,${location}::uuid,'PURCHASE',10,'Test receipt','fixture',null,${identity.user.id})`);
-    await mutate({action:"settings.save",name:"Dink Store",email:"store@example.test",phone:"",address:"Davao",shippingFee:15000});
+    await mutate({action:"settings.save",name:"Dink Store",email:"store@example.test",phone:"",address:"Davao",shippingFee:15000,paymentInstructions:""});
     const pid=await mutate({action:"promotion.save",code:"SAVE10",kind:"percent",amount:10,minimum:0,startsAt:new Date(Date.now()-86400000).toISOString(),endsAt:new Date(Date.now()+86400000).toISOString(),usageLimit:2,active:true});
     const create={action:"order.create",customerId:cid,locationId:location,promotionCode:"SAVE10",notes:"Test order",items:[{variantId:vid,quantity:2},{variantId:vid2,quantity:1}]};
     const balance=async()=> (await rows<{on_hand:number;reserved:number}>(sql`select on_hand,reserved from inventory_balances where variant_id=${vid}::uuid and location_id=${location}::uuid`))[0]!;

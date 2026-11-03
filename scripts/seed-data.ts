@@ -65,7 +65,7 @@ const variantDefinitions = [
   ["selkirk-training-shirt", "DEV-SEL-SHIRT-L", 180000, null, 95000, "size", "large"],
 ] as const;
 const variantRows = variantDefinitions.map(([product, sku, price, compareAtPrice, cost]) => ({
-  id: id(`variant:${sku}`), productId: id(`product:${product}`), sku, price, compareAtPrice, cost,
+  inventoryMode: "counted", id: id(`variant:${sku}`), productId: id(`product:${product}`), sku, price, compareAtPrice, cost,
 }));
 const assignmentRows: InferInsertModel<typeof schema.productAttributeValues>[] = variantDefinitions.map(([product, sku, , , , attribute, value]) => ({
   id: id(`assignment:${sku}:${attribute}`), productId: id(`product:${product}`),
