@@ -11,16 +11,19 @@ export function ImportPanel({ kind }: { kind: Kind }) {
   const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
   async function choose(file?: File) {
-    setErrors([]); setReady(false); setMessage("");
+    setErrors([]); setReady(false); setMessage(""); setText(""); setBatchId("");
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".csv") || file.size > 500_000) { setErrors(["Choose a CSV file smaller than 500 KB."]); return; }
+    if (!/\.(csv|xls|xlsx)$/i.test(file.name) || file.size > 500_000) { setErrors(["Choose a CSV, XLS or XLSX file no larger than 500 KB."]); return; }
     setPending(true);
     try {
-      const value = await file.text(); setText(value); setBatchId(crypto.randomUUID());
+      const value = /\.csv$/i.test(file.name)
+        ? await file.text()
+        : (await import("@/lib/data-transfer/spreadsheet")).spreadsheetToCsv(await file.arrayBuffer());
+      setText(value); setBatchId(crypto.randomUUID());
       const result = await previewTransfer(kind, value);
       setReady(result.ok); setErrors(result.errors);
       if (result.ok) setMessage(`${result.count} row${result.count === 1 ? "" : "s"} validated. Review your file, then confirm the import.`);
-    } catch { setErrors(["Could not read or validate the uploaded file."]); }
+    } catch (error) { setErrors([error instanceof Error ? error.message : "Could not read or validate the uploaded file."]); }
     finally { setPending(false); }
   }
   async function confirm() {
@@ -34,7 +37,7 @@ export function ImportPanel({ kind }: { kind: Kind }) {
   }
   return <section className="space-y-3 rounded-xl border bg-card p-5">
     <h2 className="text-xl">Import {kind}</h2>
-    <label className="block text-sm">Choose completed CSV template<input type="file" accept=".csv,text/csv" disabled={pending} onChange={(event) => void choose(event.target.files?.[0])} className="mt-2 block w-full text-sm" /></label>
+    <label className="block text-sm">Choose completed CSV or Excel template<input type="file" accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={pending} onChange={(event) => void choose(event.target.files?.[0])} className="mt-2 block w-full text-sm" /></label>
     {message && <p aria-live="polite" className="text-sm">{message}</p>}
     {errors.length > 0 && <ul role="alert" className="list-inside list-disc space-y-1 text-sm text-destructive">{errors.slice(0, 30).map((error, i) => <li key={`${i}-${error}`}>{error}</li>)}</ul>}
     {ready && <button type="button" disabled={pending} onClick={() => void confirm()} className="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-60">{pending ? "Importing…" : "Confirm import"}</button>}
