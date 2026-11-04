@@ -39,3 +39,25 @@ Checkout supports optional email, delivery or pickup, proof of payment for deliv
 Apply tracked migrations to the identified deployment database before enabling checkout. No migrations run during builds or requests. Guest orders reuse atomic server pricing, promotions, stock reservations and admin fulfillment. One server-selected location must supply the entire order. Submissions accept at most 30 distinct SKUs and 10 units per SKU. Network retries reuse the form request ID; a changed payload needs a new ID. The public tracker accepts an order UUID reference only, returns basic progress, and is rate limited.
 
 Checkout supports optional email, pickup/delivery, payment proof and admin confirmation. Enter customer-facing GCash/bank instructions under Admin → Store settings. Configure a dedicated private Blob token as `PAYMENT_PROOF_BLOB_READ_WRITE_TOKEN`. Pay-on-pickup stock holds expire after 24 hours; Vercel Cron calls the expiry endpoint every five minutes and requires `CRON_SECRET`. Apply `0013_checkout_fulfillment_tracking.sql` and `0014_store_payment_instructions.sql` in journal order before deploying this checkout.
+
+## Storefront cart
+
+Shop buttons add items to the shared browser cart without navigating. The header
+shows its quantity count and links to `/cart`, where shoppers can update quantities,
+remove items and proceed to checkout. Confirmation and per-product cart counts
+provide feedback without opening checkout automatically.
+
+The `haus-of-dink-cart-v1` localStorage entry stores only variant IDs and quantities
+(maximum 30 SKUs, 10 per SKU). The cart survives refreshes, synchronizes through
+storage events across tabs, and uses memory when browser storage is unavailable.
+Prices, product descriptions and availability are loaded from the current catalog
+on the cart and checkout pages. Unavailable or excessive quantities block checkout
+until corrected; the order transaction remains the final authority for prices,
+stock, reservations and promotions. Adding to a cart does not reserve stock.
+
+Checkout uses this same cart. Legacy `/checkout?variant=...` links add the selected
+available SKU once while preserving other items. Failed orders keep the cart;
+successful orders subtract the purchased quantities while retaining unrelated
+items or additional quantities added during submission. No customer account or
+new database migration is needed. `npm run cart:test` exercises persistence,
+validation, limits, quantity updates and purchase completion behavior.

@@ -20,7 +20,8 @@
     "commerce:test": "node --conditions=react-server --import tsx --test scripts/commerce.test.ts scripts/guest-checkout.test.ts",
     "data-transfer:test": "node --conditions=react-server --import tsx --test scripts/data-transfer.test.ts scripts/data-transfer-export.test.ts scripts/data-transfer-import.test.ts",
     "pos:test": "node --conditions=react-server --import tsx --test scripts/pos-filters.test.ts",
-    "images:test": "node --conditions=react-server --import tsx --test scripts/product-images.test.ts"
+    "images:test": "node --conditions=react-server --import tsx --test scripts/product-images.test.ts",
+    "cart:test": "node --import tsx --test scripts/cart.test.ts"
   },
   "dependencies": {
     "@e965/xlsx": "0.20.3",

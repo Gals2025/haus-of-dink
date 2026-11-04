@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowUpRight, Search, ShoppingBag } from "lucide-react";
+import { ArrowUpRight, Search } from "lucide-react";
+import { CartLink } from "@/components/storefront/cart-link";
 import { Brand } from "@/components/layout/brand";
 
 export function StorefrontHeader() {
@@ -15,11 +16,8 @@ export function StorefrontHeader() {
           </button>
         </form>
         <Link href="/shop" className="shop-all">Shop all <ArrowUpRight aria-hidden="true" className="size-4" /></Link>
-        <Link href="/track-order" className="shop-all">Track order</Link>
-        <Link href="/checkout" className="checkout-link" aria-label="Checkout">
-          <ShoppingBag aria-hidden="true" className="size-5" />
-          <span>Checkout</span>
-        </Link>
+        <Link href="/track-order" className="shop-all store-track-order">Track order</Link>
+        <CartLink />
       </div>
     </header>
   );
