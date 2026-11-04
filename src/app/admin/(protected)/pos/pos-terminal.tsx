@@ -161,7 +161,7 @@ function PosProductCard({product,disabled,onAdd}:{product:PosProduct;disabled:bo
   const showImage=Boolean(product.imageUrl)&&failedImage!==product.imageUrl;
   return <button type="button" disabled={disabled} onClick={onAdd} aria-label={`Add ${product.name} (${product.sku}), ${peso(product.price)}`} title={`${product.name} · ${product.sku}`} className="flex aspect-square w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-background text-left transition hover:border-primary hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50">
     <span className="relative block min-h-0 w-full flex-1 bg-muted/40">
-      {showImage ? <Image src={product.imageUrl!} alt="" fill unoptimized sizes="(min-width: 1280px) 300px, (min-width: 1024px) 400px, 50vw" className="object-contain p-2" onError={()=>setFailedImage(product.imageUrl)}/> : <span className="flex h-full items-center justify-center" aria-hidden="true"><ImageIcon className="size-10 text-muted-foreground/40"/></span>}
+      {showImage ? <Image src={product.imageUrl!} alt="" fill unoptimized sizes="(min-width: 1280px) 300px, (min-width: 1024px) 400px, 50vw" className="object-cover" onError={()=>setFailedImage(product.imageUrl)}/> : <span className="flex h-full items-center justify-center" aria-hidden="true"><ImageIcon className="size-10 text-muted-foreground/40"/></span>}
     </span>
     <span className="block w-full space-y-1 border-t bg-card p-2"><span className="line-clamp-2 text-sm font-medium leading-tight">{product.name}</span><span className="block text-sm font-semibold text-primary">{peso(product.price)}</span></span>
   </button>;
