@@ -32,9 +32,16 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
   const tendered = method === "cash" ? parseMoney(cash) : subtotal;
   const change = Math.max(0, tendered - subtotal);
   const categories = useMemo(() => [...new Map(products.map(product => [product.categoryId, { id: product.categoryId, name: product.categoryName }])).values()].sort((a,b) => a.name.localeCompare(b.name)), [products]);
-  const brands = useMemo(() => [...new Map(products.map(product => [product.brandId, { id: product.brandId, name: product.brandName }])).values()].sort((a,b) => a.name.localeCompare(b.name)), [products]);
+  const brands = useMemo(() => [...new Map(products.filter(product => !categoryId || product.categoryId === categoryId).map(product => [product.brandId, { id: product.brandId, name: product.brandName }])).values()].sort((a,b) => a.name.localeCompare(b.name)), [products, categoryId]);
   const matchingProducts = filterPosProducts(products, { search, categoryId, brandId });
   const visibleProducts = matchingProducts.slice(0, 40);
+
+  function changeCategory(nextCategoryId: string) {
+    setCategoryId(nextCategoryId);
+    if (brandId && !products.some(product => product.brandId === brandId && (!nextCategoryId || product.categoryId === nextCategoryId))) {
+      setBrandId("");
+    }
+  }
 
   function add(product: PosProduct) {
     if (pending || (product.stock[locationId] ?? 0) <= 0) return;
@@ -92,7 +99,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
           }} placeholder="Scan or type to search…" /></label>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-sm">Category<select className={field} value={categoryId} onChange={event => setCategoryId(event.target.value)}>
+          <label className="text-sm">Category<select className={field} value={categoryId} onChange={event => changeCategory(event.target.value)}>
             <option value="">All categories</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select></label>
           <label className="text-sm">Brand<select className={field} value={brandId} onChange={event => setBrandId(event.target.value)}>
