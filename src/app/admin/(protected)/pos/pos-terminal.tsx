@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { peso } from "@/server/commerce/contracts";
 import type { PosLocation, PosProduct } from "@/server/pos/contracts";
+import { filterPosProducts } from "@/lib/pos/filters";
 import { submitPosSale } from "./actions";
 
 type Line = { variantId: string; quantity: number };
@@ -15,6 +16,8 @@ const input = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
 export function PosTerminal({ locations, products }: { locations: PosLocation[]; products: PosProduct[] }) {
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [search, setSearch] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [brandId, setBrandId] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [method, setMethod] = useState("cash");
   const [cash, setCash] = useState("");
@@ -28,10 +31,10 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
   const subtotal = useMemo(() => lines.reduce((total, line) => total + (products.find(p => p.id === line.variantId)?.price ?? 0) * line.quantity, 0), [lines, products]);
   const tendered = method === "cash" ? parseMoney(cash) : subtotal;
   const change = Math.max(0, tendered - subtotal);
-  const visibleProducts = products.filter(p => {
-    const needle = search.trim().toLowerCase();
-    return (!needle || [p.name, p.sku, p.barcode ?? ""].some(value => value.toLowerCase().includes(needle)));
-  }).slice(0, 40);
+  const categories = useMemo(() => [...new Map(products.map(product => [product.categoryId, { id: product.categoryId, name: product.categoryName }])).values()].sort((a,b) => a.name.localeCompare(b.name)), [products]);
+  const brands = useMemo(() => [...new Map(products.map(product => [product.brandId, { id: product.brandId, name: product.brandName }])).values()].sort((a,b) => a.name.localeCompare(b.name)), [products]);
+  const matchingProducts = filterPosProducts(products, { search, categoryId, brandId });
+  const visibleProducts = matchingProducts.slice(0, 40);
 
   function add(product: PosProduct) {
     if (pending || (product.stock[locationId] ?? 0) <= 0) return;
@@ -84,9 +87,21 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
             if (event.key !== "Enter") return;
             event.preventDefault();
             const term = search.trim().toLowerCase();
-            const exact = products.find(product => (product.barcode?.toLowerCase() === term || product.sku.toLowerCase() === term) && (product.stock[locationId] ?? 0) > 0);
+            const exact = matchingProducts.find(product => (product.barcode?.toLowerCase() === term || product.sku.toLowerCase() === term) && (product.stock[locationId] ?? 0) > 0);
             if (exact) { add(exact); setSearch(""); }
           }} placeholder="Scan or type to search…" /></label>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm">Category<select className={field} value={categoryId} onChange={event => setCategoryId(event.target.value)}>
+            <option value="">All categories</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select></label>
+          <label className="text-sm">Brand<select className={field} value={brandId} onChange={event => setBrandId(event.target.value)}>
+            <option value="">All brands</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
+          </select></label>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>Showing {visibleProducts.length} of {matchingProducts.length} matching products</span>
+          {(categoryId || brandId || search) && <button type="button" onClick={() => { setCategoryId(""); setBrandId(""); setSearch(""); }} className="min-h-11 px-2 underline underline-offset-4">Clear filters</button>}
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {visibleProducts.map(product => {
