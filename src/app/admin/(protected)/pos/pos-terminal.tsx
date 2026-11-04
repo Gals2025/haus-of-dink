@@ -112,7 +112,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
           <span>Showing {visibleProducts.length} of {matchingProducts.length} matching products</span>
           {(categoryId || brandId || search) && <button type="button" onClick={() => { setCategoryId(""); setBrandId(""); setSearch(""); }} className="min-h-11 px-2 underline underline-offset-4">Clear filters</button>}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 min-[68.75rem]:grid-cols-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,8rem),1fr))] gap-2">
           {visibleProducts.map(product => {
             const available = product.stock[locationId] ?? 0;
             return <PosProductCard key={product.id} product={product} disabled={pending || available <= 0} onAdd={() => add(product)} />;
@@ -163,7 +163,7 @@ function PosProductCard({product,disabled,onAdd}:{product:PosProduct;disabled:bo
     <span className="relative block min-h-0 w-full flex-1 bg-muted/40">
       {showImage ? <Image src={product.imageUrl!} alt="" fill unoptimized sizes="(min-width: 1280px) 300px, (min-width: 1024px) 400px, 50vw" className="object-contain p-2" onError={()=>setFailedImage(product.imageUrl)}/> : <span className="flex h-full items-center justify-center" aria-hidden="true"><ImageIcon className="size-10 text-muted-foreground/40"/></span>}
     </span>
-    <span className="block w-full space-y-1 border-t bg-card p-3"><span className="line-clamp-2 text-sm font-medium leading-tight">{product.name}</span><span className="block text-sm font-semibold text-primary">{peso(product.price)}</span></span>
+    <span className="block w-full space-y-1 border-t bg-card p-2"><span className="line-clamp-2 text-sm font-medium leading-tight">{product.name}</span><span className="block text-sm font-semibold text-primary">{peso(product.price)}</span></span>
   </button>;
 }
 
