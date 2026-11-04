@@ -82,11 +82,11 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
     });
   }
 
-  return <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
-    <Card className="gap-4">
+  return <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
+    <Card className="min-w-0 gap-4">
       <CardHeader><CardTitle className="text-xl">Products</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 min-[68.75rem]:grid-cols-2">
           <label className="text-sm">Store location<select disabled={pending} className={field} value={locationId} onChange={event => { setLocationId(event.target.value); setLines([]); }}>
             {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
           </select></label>
@@ -98,7 +98,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
             if (exact) { add(exact); setSearch(""); }
           }} placeholder="Scan or type to search…" /></label>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 min-[68.75rem]:grid-cols-2">
           <label className="text-sm">Category<select className={field} value={categoryId} onChange={event => changeCategory(event.target.value)}>
             <option value="">All categories</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select></label>
@@ -110,7 +110,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
           <span>Showing {visibleProducts.length} of {matchingProducts.length} matching products</span>
           {(categoryId || brandId || search) && <button type="button" onClick={() => { setCategoryId(""); setBrandId(""); setSearch(""); }} className="min-h-11 px-2 underline underline-offset-4">Clear filters</button>}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 min-[68.75rem]:grid-cols-2">
           {visibleProducts.map(product => {
             const available = product.stock[locationId] ?? 0;
             return <button key={product.id} type="button" disabled={pending || available <= 0} onClick={() => add(product)} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-muted disabled:opacity-50">
@@ -122,7 +122,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
         </div>
       </CardContent>
     </Card>
-    <Card className="gap-4">
+    <Card className="min-w-0 gap-4">
       <CardHeader><CardTitle className="text-xl">Current sale</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <label className="block text-sm">Customer name <span className="text-muted-foreground">(optional)</span><input className={input} maxLength={160} value={customerName} onChange={event => setCustomerName(event.target.value)} placeholder="Walk-in customer" /></label>
