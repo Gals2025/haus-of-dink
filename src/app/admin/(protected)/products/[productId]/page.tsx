@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/server/auth/authorize";
 import { getProductDetail, listProductOptions } from "@/server/catalog/service";
 import { VariantForm } from "../variant-form";
+import { ProductImageUploader } from "../image-uploader";
 import { ProductStatusControls } from "../status-controls";
 
 export default async function ProductPage({ params, searchParams }: {
@@ -47,7 +48,7 @@ export default async function ProductPage({ params, searchParams }: {
       {canWrite && p.status !== "archived" && p.variants.filter((v) => v.status === "active").map((v) => <Link key={v.id} className="mr-4 inline-block text-sm underline" href={`/admin/inventory/adjustments?variantId=${v.id}&type=PURCHASE`}>Receive stock: {v.sku}</Link>)}
       <Link className="inline-block text-sm underline" href="/admin/inventory">Open inventory</Link>
     </section>
-    <section className="space-y-3"><h2 className="text-2xl">Images</h2>{p.images.length ? <ul className="grid gap-4 sm:grid-cols-2">{p.images.map((i) => <li key={i.id} className="flex items-start gap-4 rounded-xl border bg-card p-4">
+    <section className="space-y-3"><h2 className="text-2xl">Images</h2>{canWrite && p.status !== "archived" && <ProductImageUploader productId={p.id} name={p.name} variants={p.variants.map(v=>({id:v.id,sku:v.sku}))} />}{p.images.length ? <ul className="grid gap-4 sm:grid-cols-2">{p.images.map((i) => <li key={i.id} className="flex items-start gap-4 rounded-xl border bg-card p-4">
       <Image unoptimized src={i.blobUrl} alt={i.altText} width={96} height={96} className="size-24 rounded-md object-contain" />
       <div><p className="break-words text-sm">{i.altText}</p><p className="mt-1 text-xs text-muted-foreground">{i.variantId ? `Variant: ${p.variants.find((v) => v.id === i.variantId)?.sku ?? "Unavailable"}` : "Product image"}{i.isPrimary ? " · Primary" : ""}</p></div>
     </li>)}</ul> : <p className="text-sm text-muted-foreground">No images yet.</p>}</section>

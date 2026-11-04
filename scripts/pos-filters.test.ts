@@ -8,9 +8,9 @@ import { catalogFixture } from "./catalog-fixture";
 import { mainLocationId } from "../src/server/inventory/contracts";
 
 const products: PosProduct[] = [
- {id:"1",name:"Control Paddle",sku:"PAD-1",barcode:"00123",price:100,categoryId:"paddles",categoryName:"Paddles",brandId:"joola",brandName:"Joola",stock:{main:2}},
- {id:"2",name:"Power Paddle",sku:"PAD-2",barcode:null,price:200,categoryId:"paddles",categoryName:"Paddles",brandId:"selkirk",brandName:"Selkirk",stock:{main:3}},
- {id:"3",name:"Paddle Bag",sku:"BAG-1",barcode:"00456",price:300,categoryId:"bags",categoryName:"Bags",brandId:"joola",brandName:"Joola",stock:{main:4}},
+ {id:"1",name:"Control Paddle",sku:"PAD-1",barcode:"00123",price:100,imageUrl:null,imageAlt:null,categoryId:"paddles",categoryName:"Paddles",brandId:"joola",brandName:"Joola",stock:{main:2}},
+ {id:"2",name:"Power Paddle",sku:"PAD-2",barcode:null,price:200,imageUrl:null,imageAlt:null,categoryId:"paddles",categoryName:"Paddles",brandId:"selkirk",brandName:"Selkirk",stock:{main:3}},
+ {id:"3",name:"Paddle Bag",sku:"BAG-1",barcode:"00456",price:300,imageUrl:null,imageAlt:null,categoryId:"bags",categoryName:"Bags",brandId:"joola",brandName:"Joola",stock:{main:4}},
 ];
 const ids=(search="",categoryId="",brandId="")=>filterPosProducts(products,{search,categoryId,brandId}).map(p=>p.id);
 

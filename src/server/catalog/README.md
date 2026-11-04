@@ -197,3 +197,24 @@ duplicate combinations, paginated/escaped SKU search, inventory protection,
 audit immutability and rollback in disposable PGlite. No live database is used.
 Signed-in browser flows and independent Neon connection concurrency still need
 verification against an explicitly configured non-production application.
+
+## Product thumbnails
+
+Product detail → Images → Upload thumbnail accepts JPEG, PNG, WebP and AVIF
+files up to 5 MB. Inventory writers can choose a shared product thumbnail or a
+specific SKU. Uploading sets the new image as primary for that scope and retains
+previous images in the gallery. Variant thumbnails take precedence over shared
+product thumbnails in POS and the storefront. Missing or failed POS images use a
+placeholder; POS tiles remain square and show only the product name and price.
+
+Uploads use the existing public featured-image Vercel Blob integration and
+`FEATURED_BLOB_STORE_ID`. The private payment-proof store is never used. A server-
+authorized, five-minute, path-bound PUT URL restricts content type and file size;
+the browser uploads directly to storage. Saving verifies the public product-image
+URL, uploaded metadata and current product-write access, then changes primary
+image metadata and its audit atomically under the management lock. Public image
+storage must be connected in the deployment. No database migration is required.
+
+`npm run images:test` covers upload contracts, primary-image replacement,
+product/variant ownership, revoked sessions, retained gallery images and matching
+POS/storefront image selection using isolated PostgreSQL.

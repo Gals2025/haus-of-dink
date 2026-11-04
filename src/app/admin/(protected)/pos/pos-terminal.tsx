@@ -1,6 +1,8 @@
 "use client";
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { ImageIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,10 +115,7 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 min-[68.75rem]:grid-cols-2">
           {visibleProducts.map(product => {
             const available = product.stock[locationId] ?? 0;
-            return <button key={product.id} type="button" disabled={pending || available <= 0} onClick={() => add(product)} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-muted disabled:opacity-50">
-              <span className="min-w-0"><span className="block truncate font-medium">{product.name}</span><span className="block text-xs text-muted-foreground">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}</span></span>
-              <span className="shrink-0 text-right text-sm">{peso(product.price)}<span className="block text-xs text-muted-foreground">{product.inventoryMode === "availability_only" ? (available > 0 ? "Available" : "Not available") : `${available} in stock`}</span></span>
-            </button>;
+            return <PosProductCard key={product.id} product={product} disabled={pending || available <= 0} onAdd={() => add(product)} />;
           })}
           {visibleProducts.length === 0 && <p className="p-4 text-sm text-muted-foreground">No matching products.</p>}
         </div>
@@ -155,6 +154,17 @@ export function PosTerminal({ locations, products }: { locations: PosLocation[];
       </CardContent>
     </Card>
   </div>;
+}
+
+function PosProductCard({product,disabled,onAdd}:{product:PosProduct;disabled:boolean;onAdd:()=>void}) {
+  const [failedImage,setFailedImage]=useState<string|null>(null);
+  const showImage=Boolean(product.imageUrl)&&failedImage!==product.imageUrl;
+  return <button type="button" disabled={disabled} onClick={onAdd} aria-label={`Add ${product.name} (${product.sku}), ${peso(product.price)}`} title={`${product.name} · ${product.sku}`} className="flex aspect-square w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-background text-left transition hover:border-primary hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50">
+    <span className="relative block min-h-0 w-full flex-1 bg-muted/40">
+      {showImage ? <Image src={product.imageUrl!} alt="" fill unoptimized sizes="(min-width: 1280px) 300px, (min-width: 1024px) 400px, 50vw" className="object-contain p-2" onError={()=>setFailedImage(product.imageUrl)}/> : <span className="flex h-full items-center justify-center" aria-hidden="true"><ImageIcon className="size-10 text-muted-foreground/40"/></span>}
+    </span>
+    <span className="block w-full space-y-1 border-t bg-card p-3"><span className="line-clamp-2 text-sm font-medium leading-tight">{product.name}</span><span className="block text-sm font-semibold text-primary">{peso(product.price)}</span></span>
+  </button>;
 }
 
 function QuantityControl({ label, value, max, disabled, onChange }: { label: string; value: number; max: number; disabled: boolean; onChange: (quantity: number) => void }) {
