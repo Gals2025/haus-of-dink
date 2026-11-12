@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { peso } from "@/server/commerce/contracts";
 import type { PosLocation, PosProduct } from "@/server/pos/contracts";
+import { mainLocationId } from "@/server/inventory/contracts";
 import { filterPosProducts } from "@/lib/pos/filters";
 import { submitPosSale } from "./actions";
 
@@ -16,7 +17,7 @@ const field = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
 const input = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
 
 export function PosTerminal({ locations, products }: { locations: PosLocation[]; products: PosProduct[] }) {
-  const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
+  const [locationId, setLocationId] = useState(locations.find(location => location.id === mainLocationId)?.id ?? locations[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [brandId, setBrandId] = useState("");

@@ -139,3 +139,22 @@ only SKU, a mixed order, sales pause, cancellation and POS. The migration has be
 validated against isolated PostgreSQL databases; that does not validate a live
 production connection or migrate it automatically. Keep history tables intact if
 rolling back and restore the database and application together if necessary.
+
+## Store locations
+
+Inventory → Store locations (`/admin/inventory/locations`) lists existing branches,
+stockrooms and warehouses. Inventory writers (admin/super_admin) can add a trimmed
+name of 1–160 characters. The server rejects duplicate names ignoring case and
+outer spaces. Creation rechecks the current session/role under the shared
+management lock and commits its `inventory.location.create` commerce audit with
+the new location. There are no rename/delete actions that could disrupt history.
+
+New locations appear in Inventory and POS after refresh. Existing balances are
+not copied or moved: counted items begin with zero available stock at the new
+location until received there. Availability-only items retain their global sales
+availability. Main stockroom remains the initial POS selection when it exists.
+Enabling counting for a SKU requires physical counts at every location, including
+new ones. This feature uses the existing schema; no migration is required.
+
+`npm run locations:test` covers validation, duplicate/concurrent submissions,
+authorization, audit rollback, unchanged stock and Inventory/POS projections.
