@@ -45,7 +45,7 @@ export async function getOrderOptions() {
 }
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => { const d=new Date(v); return Number.isFinite(d.getTime()) && d.toISOString().slice(0,10)===v; });
 export const reportFilters = z.object({start:date,end:date}).refine(v=>v.start<=v.end && new Date(v.end).getTime()-new Date(v.start).getTime()<=366*86400000,"Choose a range of up to 366 days.");
-export type Report = { authorized:boolean;orders:number;pending:number;cancelled:number;revenue:string;discounts:string;shipping:string;deposits:string;cost:string;missingCost:number;daily:{day:string;orders:number;revenue:string}[] };
+export type Report = { authorized:boolean;orders:number;pending:number;cancelled:number;revenue:string;discounts:string;shipping:string;deposits:string;cost:string;missingCost:number;estimatedCost:number;daily:{day:string;orders:number;revenue:string}[] };
 export async function getReport(input: unknown) {
   const filters=reportFilters.parse(input); const identity=await getPermissionSession("reports:read"); if(!identity) throw Error("Access denied.");
   const report=(await getDb().execute<Report>(reportQuery(identity,filters.start,filters.end))).rows[0];

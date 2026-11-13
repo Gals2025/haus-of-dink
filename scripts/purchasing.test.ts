@@ -1,0 +1,100 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { sql,eq } from "drizzle-orm";
+import { catalogFixture } from "./catalog-fixture";
+import { createCommerce } from "../src/server/commerce/service";
+import { createPurchasing,purchasingOptionsQuery,purchasingQuery } from "../src/server/purchasing/service";
+import { stockQuery } from "../src/server/inventory/queries";
+import { stockFilters } from "../src/server/inventory/contracts";
+import { phpCents,purchasingInput } from "../src/server/purchasing/contracts";
+import { managementLock } from "../src/server/admin/queries";
+import { mainLocationId } from "../src/server/inventory/contracts";
+
+test("supplier receipts, atomic product setup, weighted average and saved sale costs",async()=>{
+ const f=await catalogFixture();
+ try{
+  const identity=await f.signIn();const service=createPurchasing({authorize:f.storage.authorize,write:async q=>f.db.transaction(async tx=>{await tx.execute(managementLock);return (await tx.execute<{id:string}>(q)).rows[0]?.id;})});
+  const save=async(input:unknown,id=crypto.randomUUID())=>{const r=await service(id,input);assert.equal(r.ok,true,JSON.stringify(r));return r.ok?r.id:"";};
+  const supplier=await save({action:"supplier.create",name:"Supplier A"});
+  const supplierB=await save({action:"supplier.create",name:"Supplier B"});
+  assert.equal((await service(crypto.randomUUID(),{action:"supplier.create",name:" supplier a "})).ok,false);
+  const productInput={action:"product.create",name:"Receiving test",slug:"receiving-test",brandId:f.data.brands[0]!.id,categoryId:f.data.categories[0]!.id,status:"active",price:9999,inventoryMode:"counted",suppliers:[{supplierId:supplier,purchaseCode:"A-1",defaultCost:100}]};
+  const product=await save(productInput);
+  const [variant]=await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.productId,product));assert.ok(variant);assert.match(variant.sku,/^SKU-/);
+  const bad={...productInput,slug:"must-rollback",suppliers:[{supplierId:crypto.randomUUID()}]};assert.equal((await service(crypto.randomUUID(),bad)).ok,false);
+  assert.equal((await f.db.select().from(f.schema.products).where(eq(f.schema.products.slug,"must-rollback"))).length,0);
+  const receive=(quantity:number,unitCost:number,supplierId=supplier)=>({action:"receipt.post",supplierId,locationId:mainLocationId,deliveryDate:"2026-11-13",reference:"Invoice",lines:[{variantId:variant.id,quantity,unitCost}]});
+  const request=crypto.randomUUID();await save(receive(2,100),request);await save(receive(2,100),request);
+  assert.equal((await service(request,receive(3,100))).ok,false);
+  await save(receive(1,101,supplierB));
+  const balance=async()=> (await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,variant.id)))[0]!;
+  assert.equal((await balance()).onHand,3);assert.equal((await balance()).stockValue,301);
+  const reservation=crypto.randomUUID();
+  await f.db.execute(sql`select inventory_apply(${reservation}::uuid,${variant.id}::uuid,${mainLocationId}::uuid,'RESERVATION',1,'Test reserve','sale',NULL,${identity.user.id})`);
+  assert.equal((await balance()).stockValue,301);
+  // Receipt while reserved changes fulfillment cost, rather than the reservation-time reference.
+  await save(receive(1,103));assert.equal((await balance()).stockValue,404);
+  await f.db.execute(sql`select inventory_apply(gen_random_uuid(),${variant.id}::uuid,${mainLocationId}::uuid,'SALE',1,'Test fulfill','sale',${reservation}::uuid,${identity.user.id})`);
+  assert.equal((await balance()).stockValue,303);
+  const c=(await f.db.execute<{total:string;basis:string}>(sql`select * from order_line_cost(${variant.id}::uuid,${reservation}::uuid,${mainLocationId}::uuid,1)`)).rows[0]!;
+  assert.equal(Number(c.total),101);assert.equal(c.basis,"weighted_average");
+  await f.db.execute(sql`select inventory_apply(gen_random_uuid(),${variant.id}::uuid,${mainLocationId}::uuid,'SALE',3,'Test remaining','sale',NULL,${identity.user.id})`);
+  assert.equal((await balance()).stockValue,0);
+  await save(receive(3,100));await save({action:"valuation.set",variantId:variant.id,locationId:mainLocationId,value:301,reason:"Actual invoice correction"});
+  await f.db.execute(sql`select inventory_apply(gen_random_uuid(),${variant.id}::uuid,${mainLocationId}::uuid,'SALE',1,'Rounding test','sale',NULL,${identity.user.id})`);
+  assert.equal((await balance()).stockValue,201);
+  await f.db.execute(sql`select inventory_apply(gen_random_uuid(),${variant.id}::uuid,${mainLocationId}::uuid,'SALE',2,'Rounding remainder','sale',NULL,${identity.user.id})`);
+  assert.equal((await balance()).stockValue,0);
+  // A bad line rolls the entire delivery back.
+  const before=(await f.db.select().from(f.schema.stockReceipts)).length;
+  assert.equal((await service(crypto.randomUUID(),{...receive(1,100),lines:[{variantId:variant.id,quantity:1,unitCost:100},{variantId:crypto.randomUUID(),quantity:1,unitCost:100}]})).ok,false);
+  assert.equal((await f.db.select().from(f.schema.stockReceipts)).length,before);assert.equal((await balance()).onHand,0);
+  const availableProduct=await save({...productInput,name:"Available test",slug:"available-test",inventoryMode:"availability_only"});
+  const available=(await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.productId,availableProduct)))[0]!;
+  await save({...receive(2,250),lines:[{variantId:available.id,quantity:2,unitCost:250}]});
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,available.id))).length,0);
+  const estimate=(await f.db.execute<{total:string;basis:string}>(sql`select * from order_line_cost(${available.id}::uuid,NULL,${mainLocationId}::uuid,3)`)).rows[0]!;
+  assert.equal(Number(estimate.total),750);assert.equal(estimate.basis,"estimated");
+  // Exercise real POS and online fulfillment paths, not only the costing helper.
+  await save(receive(2,100));
+  const posRequest=crypto.randomUUID();
+  const posPayload={action:"pos.sale",requestId:posRequest,locationId:mainLocationId,customerName:"Walk in",paymentMethod:"cash",amountTendered:9999,items:[{variantId:variant.id,quantity:1}]};
+  const posId=(await f.db.execute<{id:string}>(sql`select pos_execute(${identity.user.id},${posRequest}::uuid,${JSON.stringify(posPayload)}::jsonb) as id`)).rows[0]!.id;
+  const posLine=(await f.db.select().from(f.schema.orderItems).where(eq(f.schema.orderItems.orderId,posId)))[0]!;
+  assert.equal(posLine.costTotal,100);assert.equal(posLine.costBasis,"weighted_average");
+  const commerce=createCommerce({authorize:f.storage.authorize,write:async q=>(await f.db.execute<{id:string}>(q)).rows[0]?.id});
+  const mutate=async(input:unknown)=>{const r=await commerce(crypto.randomUUID(),input);assert.ok(r.ok,JSON.stringify(r));return r.id;};
+  const customer=await mutate({action:"customer.save",name:"Cost buyer",email:"cost@example.test",phone:"090000",address:"Test",active:true});
+  const online=await mutate({action:"order.create",customerId:customer,locationId:mainLocationId,promotionCode:"",notes:"",items:[{variantId:variant.id,quantity:1}]});
+  const onlineLine=async()=>(await f.db.select().from(f.schema.orderItems).where(eq(f.schema.orderItems.orderId,online)))[0]!;
+  assert.equal((await onlineLine()).costTotal,null);
+  await save(receive(1,200));
+  await mutate({action:"order.pay",id:online,reference:"Paid"});await mutate({action:"order.fulfill",id:online});
+  assert.equal((await onlineLine()).costTotal,150);assert.equal((await onlineLine()).costBasis,"weighted_average");
+  await save({action:"valuation.set",variantId:variant.id,locationId:mainLocationId,value:999,reason:"Later cost correction"});
+  assert.equal((await onlineLine()).costTotal,150);assert.equal(posLine.costTotal,100);
+  // Unknown stock stays unknown until valued, including after a known-cost delivery.
+  const unknownProduct=await save({...productInput,name:"Unknown cost",slug:"unknown-cost",suppliers:[]});
+  const unknown=(await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.productId,unknownProduct)))[0]!;
+  await f.db.execute(sql`select inventory_apply(gen_random_uuid(),${unknown.id}::uuid,${mainLocationId}::uuid,'OPENING_STOCK',2,'Unknown opening','',NULL,${identity.user.id})`);
+  await save({...receive(1,250),lines:[{variantId:unknown.id,quantity:1,unitCost:250}]});
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,unknown.id)))[0]!.stockValue,null);
+  await save({action:"valuation.set",variantId:unknown.id,locationId:mainLocationId,value:750,reason:"Confirmed opening cost"});
+  assert.equal((await f.db.select().from(f.schema.inventoryBalances).where(eq(f.schema.inventoryBalances.variantId,unknown.id)))[0]!.stockValue,750);
+  const unchanged=(await f.db.select().from(f.schema.productVariants).where(eq(f.schema.productVariants.id,variant.id)))[0]!;assert.equal(unchanged.price,9999);
+  await assert.rejects(f.db.execute(sql`update stock_receipts set reference='changed'`));
+  await assert.rejects(f.db.execute(sql`delete from stock_receipt_lines`));
+  const optionRow=(await f.db.execute<{data:{costs:{supplierId:string;variantId:string;unitCost:number;defaultCost:number}[]}}>(purchasingOptionsQuery(identity))).rows[0]!;
+  const supplierCost=optionRow.data.costs.find(c=>c.supplierId===supplier&&c.variantId===variant.id)!;
+  assert.equal(supplierCost.unitCost,200);assert.equal(supplierCost.defaultCost,100);
+  // Product pagination must not split a product with many physical variants.
+  await f.db.insert(f.schema.productVariants).values(Array.from({length:30},(_,i)=>({productId:product,sku:`PHYSICAL-${i}`,price:9999,inventoryMode:"counted"})));
+  const grouped=(await f.db.execute(stockQuery(identity,stockFilters.parse({search:"Receiving test"}),true))).rows;
+  assert.equal(grouped.length,31);assert.ok(grouped.every(r=>r.productId===product));
+  await f.db.update(f.schema.user).set({role:"staff"}).where(eq(f.schema.user.id,identity.user.id));
+  assert.equal((await f.db.execute(purchasingQuery(identity,crypto.randomUUID(),purchasingInput.parse({action:"supplier.create",name:"Stale session denied"})))).rows.length,0);
+  assert.equal((await f.db.execute(purchasingOptionsQuery(identity))).rows.length,0);
+  await f.signIn("staff");assert.equal((await service(crypto.randomUUID(),{action:"supplier.create",name:"Denied"})).ok,false);
+ }finally{await f.client.close();}
+});
+test("PHP costs are exact and do not accept fractional centavos",()=>{assert.equal(phpCents("165.90"),16590);assert.equal(phpCents("0"),0);assert.equal(phpCents("1.001"),null);assert.equal(phpCents("-1"),null);});

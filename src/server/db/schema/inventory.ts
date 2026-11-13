@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, foreignKey, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { bigint, check, foreignKey, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { productVariants } from "./catalog";
 import { user } from "./auth";
 import { movementTypes } from "../../inventory/contracts";
@@ -11,10 +11,12 @@ export const inventoryLocations = pgTable("inventory_locations", {
 export const inventoryBalances = pgTable("inventory_balances", {
   variantId: uuid("variant_id").notNull().references(() => productVariants.id, { onDelete: "restrict" }),
   locationId: uuid("location_id").notNull().references(() => inventoryLocations.id, { onDelete: "restrict" }),
+  stockValue: bigint("stock_value", { mode: "number" }).default(0),
   onHand: integer("on_hand").default(0).notNull(), reserved: integer("reserved").default(0).notNull(),
   reorderLevel: integer("reorder_level").default(5).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [primaryKey({ columns: [t.variantId, t.locationId] }),
+  check("inventory_stock_value_valid",sql`${t.stockValue} IS NULL OR ${t.stockValue} BETWEEN 0 AND 9007199254740991`),
   check("inventory_balance_valid", sql`${t.onHand} >= 0 AND ${t.reserved} >= 0 AND ${t.reserved} <= ${t.onHand} AND ${t.reorderLevel} >= 0`),
   index("inventory_balances_location_idx").on(t.locationId, t.variantId)]);
 export const inventoryReservations = pgTable("inventory_reservations", {
@@ -30,6 +32,7 @@ export const inventoryReservations = pgTable("inventory_reservations", {
 export const inventoryMovements = pgTable("inventory_movements", {
   id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().unique(),
   variantId: uuid("variant_id").notNull(), locationId: uuid("location_id").notNull(),
+  costTotal: bigint("cost_total", { mode: "number" }),
   type: inventoryMovementType("type").notNull(), quantity: integer("quantity").notNull(),
   beforeOnHand: integer("before_on_hand").notNull(), afterOnHand: integer("after_on_hand").notNull(),
   beforeReserved: integer("before_reserved").notNull(), afterReserved: integer("after_reserved").notNull(),
@@ -55,6 +58,7 @@ export const inventoryMovements = pgTable("inventory_movements", {
     WHEN ${t.type} = 'RESERVATION_RELEASE' THEN ${t.afterOnHand} = ${t.beforeOnHand} AND ${t.beforeReserved} - ${t.afterReserved} = ${t.quantity}
     WHEN ${t.type} = 'SALE' AND ${t.reservationId} IS NOT NULL THEN ${t.beforeOnHand} - ${t.afterOnHand} = ${t.quantity} AND ${t.beforeReserved} - ${t.afterReserved} = ${t.quantity}
     ELSE ${t.beforeOnHand} - ${t.afterOnHand} = ${t.quantity} AND ${t.afterReserved} = ${t.beforeReserved} END`),
+  check("inventory_movement_cost_valid",sql`${t.costTotal} IS NULL OR ${t.costTotal} BETWEEN 0 AND 9007199254740991`),
   check("inventory_movement_quantity", sql`${t.quantity} > 0`),
   check("inventory_movement_reason", sql`length(trim(${t.reason})) >= 3`),
   check("inventory_movement_balances", sql`${t.beforeOnHand} >= ${t.beforeReserved} AND ${t.beforeReserved} >= 0 AND ${t.afterOnHand} >= ${t.afterReserved} AND ${t.afterReserved} >= 0`),

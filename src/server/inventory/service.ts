@@ -26,16 +26,19 @@ export const inventory = createInventory({
     return result.rows[0]?.id;
   },
 });
-export async function listStock(input: unknown) {
+export async function listStock(input: unknown, groupProducts = false) {
   const identity = await getPermissionSession("inventory:read");
   if (!identity) throw new Error("Access denied.");
   const filters = stockFilters.parse(input);
   const db = getDb();
   const [result, locations] = await Promise.all([
-    db.execute<StockRow>(stockQuery(identity, filters)),
+    db.execute<StockRow>(stockQuery(identity, filters, groupProducts)),
     db.execute<{ id: string; name: string }>(locationsQuery(identity)),
   ]);
-  return { rows: result.rows.slice(0, pageSize), hasMore: result.rows.length > pageSize, locations: locations.rows, filters };
+  const productIds=[...new Set(result.rows.map(r=>r.productId))];
+  const hasMore=groupProducts?productIds.length>pageSize:result.rows.length>pageSize;
+  const rows=groupProducts?result.rows.filter(r=>productIds.slice(0,pageSize).includes(r.productId)):result.rows.slice(0,pageSize);
+  return { rows, hasMore, locations: locations.rows, filters };
 }
 export async function listMovements(input: unknown) {
   const identity = await getPermissionSession("inventory:read");

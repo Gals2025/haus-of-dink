@@ -11,6 +11,7 @@ export async function recordStock(_previous: StockResult | null, form: FormData)
   if (!parsed.success || !manualTypes.some((type) => type === parsed.data.type)) {
     return { ok: false, error: "Choose a SKU and movement type, enter a whole quantity and a reason (at least 3 characters)." };
   }
+  if(parsed.data.type === "PURCHASE")return {ok:false,error:"Use Receive stock to record the supplier and actual unit cost for purchased deliveries."};
   try {
     const result = await inventory.change(parsed.data);
     if (result.ok) {

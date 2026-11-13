@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { requirePermission, currentPermissionSessionConditions } from "@/server/auth/authorize";
@@ -13,6 +14,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   const parsed = z.object({ variantId: z.uuid(), locationId: z.uuid().default(mainLocationId), type: z.enum(manualTypes).default("OPENING_STOCK") }).safeParse(params);
   if (!parsed.success) return <p>Select a SKU from <Link className="underline" href="/admin/inventory">inventory</Link> to record a movement.</p>;
+  if(parsed.data.type==="PURCHASE")redirect(`/admin/inventory/receiving?variantId=${parsed.data.variantId}&locationId=${parsed.data.locationId}`);
   // Check current access for catalog identifiers too; never accept a caller's SKU label.
   const db = getDb();
   const [authorized] = await db.select({ id: user.id }).from(session).innerJoin(user, eq(user.id, session.userId)).where(currentPermissionSessionConditions(identity, "inventory:write")).limit(1);

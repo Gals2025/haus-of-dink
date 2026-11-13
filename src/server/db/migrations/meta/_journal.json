@@ -134,6 +134,13 @@
       "when": 1793695328817,
       "tag": "0018_optional_stock_counting",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794577153178,
+      "tag": "0019_supplier_receiving",
+      "breakpoints": true
     }
   ]
 }

@@ -79,7 +79,8 @@ test("inventory foundation upgrades existing stock and enforces ledger reference
     await migrate(db, { migrationsFolder: folder });
     await migrate(db, { migrationsFolder: folder });
     await t.test("upgrade preserves existing stock, history, and original writer interface", async () => {
-      assert.deepEqual((await client.query("SELECT * FROM inventory_balances")).rows, before);
+      const upgraded=(await client.query<{stock_value:number}>("SELECT * FROM inventory_balances")).rows;
+      assert.deepEqual(upgraded.map(({stock_value,...original})=>{assert.equal(stock_value,10*fixtures.variants[0]!.cost!);return original;}),before);
       assert.ok((await client.query<{inventory_mode:string;sales_enabled:boolean}>("SELECT inventory_mode,sales_enabled FROM product_variants")).rows.every(v=>v.inventory_mode==="counted"&&v.sales_enabled));
       const row = (await client.query<{ source_location_id: string | null; destination_location_id: string }>("SELECT * FROM inventory_movements WHERE id=$1", [originalId])).rows[0]!;
       assert.equal(row.source_location_id, null); assert.equal(row.destination_location_id, location);

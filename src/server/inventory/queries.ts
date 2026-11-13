@@ -17,9 +17,10 @@ export function applyStockQuery(identity: AuthSession, change: StockChange) {
       ${change.type}::inventory_movement_type, ${change.quantity}::integer, ${change.reason}, ${change.reference},
       ${change.reservationId}::uuid, actor.id) as id from actor`;
 }
-export function stockQuery(identity: AuthSession, filters: StockFilters) {
+export function stockQuery(identity: AuthSession, filters: StockFilters, groupProducts = false) {
   const search = `%${filters.search.replace(/[\\%_]/g, "\\$&")}%`;
-  return sql`select v.id as "variantId", v.sku, p.name, v.inventory_mode as "inventoryMode", v.sales_enabled as "salesEnabled",
+  return sql`with matching as (select p.id as "productId", v.id as "variantId", v.sku, p.name, v.inventory_mode as "inventoryMode", v.sales_enabled as "salesEnabled",
+    case when coalesce(b.on_hand,0)=0 then '0' else b.stock_value::text end as "stockValue",
     coalesce(b.on_hand, 0)::int as "onHand", coalesce(b.reserved, 0)::int as reserved,
     (coalesce(b.on_hand, 0) - coalesce(b.reserved, 0))::int as available,
     coalesce(b.reorder_level, 5)::int as "reorderLevel"
@@ -30,7 +31,7 @@ export function stockQuery(identity: AuthSession, filters: StockFilters) {
     and (${filters.status === "all"} or
       (${filters.status === "out"} and (not v.sales_enabled or (v.inventory_mode='counted' and coalesce(b.on_hand, 0) - coalesce(b.reserved, 0) = 0))) or
       (${filters.status === "low"} and v.inventory_mode='counted' and coalesce(b.on_hand, 0) - coalesce(b.reserved, 0) <= coalesce(b.reorder_level, 5)))
-    order by lower(p.name), lower(v.sku), v.id limit ${pageSize + 1} offset ${(filters.page - 1) * pageSize}`;
+    ) select * from matching ${groupProducts ? sql`where "productId" in (select "productId" from matching group by "productId",name order by lower(name),"productId" limit ${pageSize + 1} offset ${(filters.page-1)*pageSize}) order by lower(name),"productId",lower(sku),"variantId"` : sql`order by lower(name),lower(sku),"variantId" limit ${pageSize+1} offset ${(filters.page-1)*pageSize}`}`;
 }
 export function locationsQuery(identity: AuthSession) {
   return sql`select id, name from inventory_locations where exists (${actor(identity, "inventory:read")}) order by name`;

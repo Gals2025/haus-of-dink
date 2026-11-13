@@ -22,7 +22,8 @@
     "pos:test": "node --conditions=react-server --import tsx --test scripts/pos-filters.test.ts",
     "images:test": "node --conditions=react-server --import tsx --test scripts/product-images.test.ts",
     "cart:test": "node --import tsx --test scripts/cart.test.ts",
-    "locations:test": "node --conditions=react-server --import tsx --test scripts/store-locations.test.ts"
+    "locations:test": "node --conditions=react-server --import tsx --test scripts/store-locations.test.ts",
+    "purchasing:test": "node --conditions=react-server --import tsx --test scripts/purchasing.test.ts"
   },
   "dependencies": {
     "@e965/xlsx": "0.20.3",

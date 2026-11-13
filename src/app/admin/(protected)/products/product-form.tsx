@@ -5,13 +5,28 @@ import { useState, useTransition, type FormEvent } from "react";
 import { createProductInput, normalizeSlug, type ProductInput, type Product } from "@/server/catalog/contracts";
 import { changedProductFields } from "@/server/catalog/admin-input";
 import type { ProductOptions } from "@/server/catalog/service";
-import { createCatalogProduct, updateCatalogProduct } from "./actions";
+import { updateCatalogProduct } from "./actions";
 
+import { savePurchase } from "../inventory/receiving/actions";
+import { phpCents, type PurchasingOptions } from "@/server/purchasing/contracts";
+import { uploadThumbnail } from "./upload-thumbnail";
+import { maxProductImageSize,productImageTypes } from "@/server/catalog/image-contracts";
+import { SupplierCreator } from "./supplier-creator";
 import { OptionCreator } from "./option-creator";
 
 const control = "mt-1 block w-full rounded-md border bg-background p-3 disabled:opacity-60";
-export function ProductForm({ product, options }: { product?: Product; options: ProductOptions }) {
+export function ProductForm({ product, options, suppliers: initialSuppliers = [], onCreated }: { product?: Product; options: ProductOptions; suppliers?: PurchasingOptions["suppliers"]; onCreated?: (id:string,warning?:string)=>void }) {
   const router = useRouter();
+  const [addedSuppliers,setAddedSuppliers]=useState<PurchasingOptions["suppliers"]>([]);
+  const suppliers=[...initialSuppliers,...addedSuppliers.filter(s=>!initialSuppliers.some(i=>i.id===s.id))];
+  const [thumbnail,setThumbnail]=useState<File|null>(null);
+  const [createdId,setCreatedId]=useState("");
+  const [price,setPrice]=useState("");
+  const [sku,setSku]=useState("");
+  const [mode,setMode]=useState("default");
+  const [selectedSuppliers,setSelectedSuppliers]=useState<Record<string,{purchaseCode:string;cost:string}>>({});
+  const [requestId]=useState(()=>crypto.randomUUID());
+
   const initial: ProductInput = product ? {
     name: product.name, slug: product.slug, description: product.description, shortDescription: product.shortDescription,
     brandId: product.brandId, categoryId: product.categoryId, status: product.status, featured: product.featured, newArrival: product.newArrival,
@@ -31,18 +46,25 @@ export function ProductForm({ product, options }: { product?: Product; options: 
   function accessibility(key: string) { return { "aria-invalid": Boolean(fieldErrors[key]), "aria-describedby": fieldErrors[key] ? `${key}-error` : undefined }; }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (pending || saved) return;
+    const receive=(event.nativeEvent as SubmitEvent).submitter?.getAttribute("name")==="receive";
     const parsed = createProductInput.safeParse(values);
     if (!parsed.success) {
       setFieldErrors(Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message])));
       setMessage("Check the highlighted fields."); return;
     }
+    if(!product&&phpCents(price)===null){setMessage("Enter a PHP selling price with up to two decimal places.");return;}
+    if(Object.values(selectedSuppliers).some(s=>s.cost!==""&&phpCents(s.cost)===null)){setMessage("Enter supplier costs in PHP with up to two decimal places.");return;}
     setFieldErrors({}); setMessage("");
     startTransition(async () => {
       try {
-        const result = product ? await updateCatalogProduct(product.id, changedProductFields(initial, parsed.data)) : await createCatalogProduct(parsed.data);
+        const result = product ? await updateCatalogProduct(product.id, changedProductFields(initial, parsed.data)) : await savePurchase(requestId,{...parsed.data,action:"product.create",price:phpCents(price),sku,inventoryMode:mode,suppliers:Object.entries(selectedSuppliers).map(([supplierId,v])=>({supplierId,purchaseCode:v.purchaseCode,defaultCost:v.cost===""?null:phpCents(v.cost)}))});
         if (!result.ok) { setMessage(result.error); return; }
         setSaved(true);
-        router.push(`/admin/products/${result.productId}?saved=${product ? "updated" : "created"}`);
+        const id="productId" in result?result.productId:result.id;
+        setCreatedId(id);
+        if(thumbnail){try{await uploadThumbnail(thumbnail,id,parsed.data.name);}catch{const warning="Product saved, but the thumbnail upload failed. Open product details to retry the image upload.";setMessage(warning);if(onCreated)await onCreated(id,warning);return;}}
+        if(onCreated){await onCreated(id);return;}
+        router.push(receive?`/admin/inventory/receiving?productId=${id}`:`/admin/products/${id}?saved=${product ? "updated" : "created"}`);
         router.refresh();
       } catch { setMessage("Save not confirmed. Refresh and check the product before retrying."); }
     });
@@ -63,6 +85,14 @@ export function ProductForm({ product, options }: { product?: Product; options: 
         <div className="space-y-2"><label className="text-sm">Category<select name="categoryId" required value={values.categoryId} onChange={(e) => set("categoryId", e.target.value)} {...accessibility("categoryId")} className={control}>
           <option value="">Select category</option>{categories.map((c) => <option key={c.id} value={c.id} disabled={c.status !== "active" && c.id !== product?.categoryId}>{c.name}{c.status !== "active" ? " (inactive)" : ""}</option>)}</select>{error("categoryId")}</label><OptionCreator kind="category" onCreated={(option) => { setAddedCategories((old) => [...old, option]); set("categoryId", option.id); }} /></div>
       </div>
+      {!product&&<div className="space-y-4">
+        <label className="block text-sm">Selling price (PHP)<input required inputMode="decimal" value={price} onChange={e=>setPrice(e.target.value)} className={control}/></label>
+        <label className="block text-sm">Inventory mode<select value={mode} onChange={e=>setMode(e.target.value)} className={control}><option value="default">Use store default</option><option value="counted">Count stock</option><option value="availability_only">Available / not available</option></select></label>
+        <details><summary>Suppliers (optional)</summary><SupplierCreator onCreated={s=>{setAddedSuppliers(old=>[...old,s]);setSelectedSuppliers(old=>({...old,[s.id]:{purchaseCode:"",cost:""}}));}}/><p className="my-2 text-sm">One selling SKU can have several suppliers. Costs below are purchase defaults in PHP.</p>{suppliers.map(s=><div key={s.id} className="my-3 rounded border p-3"><label><input type="checkbox" checked={Boolean(selectedSuppliers[s.id])} onChange={e=>setSelectedSuppliers(old=>{const next={...old};if(e.target.checked)next[s.id]={purchaseCode:"",cost:""};else delete next[s.id];return next;})}/> {s.name}</label>{selectedSuppliers[s.id]&&<div className="grid gap-2 sm:grid-cols-2"><label>Supplier code<input className={control} value={selectedSuppliers[s.id]!.purchaseCode} maxLength={100} onChange={e=>setSelectedSuppliers(old=>({...old,[s.id]:{...old[s.id]!,purchaseCode:e.target.value}}))}/></label><label>Default unit cost (PHP)<input className={control} inputMode="decimal" value={selectedSuppliers[s.id]!.cost} onChange={e=>setSelectedSuppliers(old=>({...old,[s.id]:{...old[s.id]!,cost:e.target.value}}))}/></label></div>}</div>)}</details>
+        <details><summary>Advanced: manual SKU</summary><input aria-label="Manual SKU" maxLength={100} value={sku} onChange={e=>setSku(e.target.value)} className={control}/><p className="text-sm">Leave blank to generate a unique SKU. Add physical variants later from product details.</p></details>
+        <label className="block text-sm">Thumbnail (optional)<input type="file" accept={productImageTypes.join(",")} className={control} onChange={e=>{const file=e.target.files?.[0]??null;if(file&&(!productImageTypes.some(t=>t===file.type)||file.size>maxProductImageSize||file.size===0)){setMessage("Choose a JPEG, PNG, WebP or AVIF image up to 5 MB.");e.target.value="";setThumbnail(null);return;}setThumbnail(file);}}/></label>
+        <p className="text-sm">Your product and selling SKU save together. The optional thumbnail uploads after the product is saved.</p>
+      </div>}
       <label className="block text-sm">Short description<textarea name="shortDescription" maxLength={500} rows={3} value={values.shortDescription ?? ""} onChange={(e) => set("shortDescription", e.target.value || null)} {...accessibility("shortDescription")} className={control} />{error("shortDescription")}</label>
       <label className="block text-sm">Description<textarea name="description" maxLength={20000} rows={7} value={values.description ?? ""} onChange={(e) => set("description", e.target.value || null)} {...accessibility("description")} className={control} />{error("description")}</label>
       <label className="block text-sm">Status<select name="status" value={values.status} disabled={product?.status === "archived"} onChange={(e) => set("status", e.target.value as ProductInput["status"])} className={control}>
@@ -72,8 +102,9 @@ export function ProductForm({ product, options }: { product?: Product; options: 
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="newArrival" checked={values.newArrival} onChange={(e) => set("newArrival", e.target.checked)} />New arrival</label></div>
     </fieldset>
     {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
-    {saved && <p role="status">Product saved. Opening details… <Link className="underline" href="/admin/products">View products</Link></p>}
+    {saved && <p role="status">Product saved. <Link className="underline" href={`/admin/products/${createdId}`}>Open product details</Link></p>}
     <div className="flex flex-wrap items-center gap-4"><button disabled={pending || saved || missingOptions} className="rounded-md bg-primary px-5 py-3 text-sm text-primary-foreground disabled:opacity-50">{pending ? "Saving…" : product ? "Save changes" : "Create product"}</button>
+      {!product&&!onCreated&&<button type="submit" name="receive" disabled={pending||saved||missingOptions} className="rounded-md border px-5 py-3 text-sm">Save and receive stock</button>}
       <Link href={product ? `/admin/products/${product.id}` : "/admin/products"} className="text-sm underline">Cancel</Link></div>
   </form>;
 }

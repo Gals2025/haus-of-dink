@@ -17,8 +17,8 @@ function MovementForm({ variantId, sku, locationId, requestId, initialType, onNe
   return <form action={action} className="max-w-xl space-y-5 rounded-xl border bg-card p-6">
     <input type="hidden" name="requestId" value={requestId} /><input type="hidden" name="variantId" value={variantId} /><input type="hidden" name="locationId" value={locationId} />
     <p className="font-medium">SKU: {sku}</p>
-    <label className="block text-sm">Movement type<select required name="type" defaultValue={initialType} className="mt-1 block w-full rounded-md border bg-background p-3">
-      {manualTypes.map((type) => <option key={type} value={type}>{type === "PURCHASE" ? "Receive stock (purchase / delivery)" : type === "OPENING_STOCK" ? "Opening stock (items already on hand)" : type.replaceAll("_", " ")}</option>)}
+    <label className="block text-sm">Movement type<select required name="type" defaultValue={initialType === "PURCHASE" ? "ADJUSTMENT_IN" : initialType} className="mt-1 block w-full rounded-md border bg-background p-3">
+      {manualTypes.filter(type=>type!=="PURCHASE").map((type) => <option key={type} value={type}>{type === "OPENING_STOCK" ? "Opening stock (items already on hand)" : type.replaceAll("_", " ")}</option>)}
     </select></label>
     <label className="block text-sm">Quantity<input name="quantity" required type="number" min={1} max={1000000} step={1} className="mt-1 block w-full rounded-md border bg-background p-3" /></label>
     <label className="block text-sm">Reference (purchase order, return or document)<input name="reference" maxLength={200} className="mt-1 block w-full rounded-md border bg-background p-3" /></label>

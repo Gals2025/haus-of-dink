@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { productVariants } from "./catalog";
 import { inventoryLocations, inventoryReservations } from "./inventory";
 import { user } from "./auth";
@@ -44,8 +44,9 @@ export const orderItems = pgTable("order_items", {
   variantId: uuid("variant_id").notNull().references(() => productVariants.id, { onDelete: "restrict" }),
   reservationId: uuid("reservation_id").references(() => inventoryReservations.id, { onDelete: "restrict" }),
   sku: varchar("sku", { length: 100 }).notNull(), name: varchar("name", { length: 240 }).notNull(),
+  costTotal: bigint("cost_total", { mode: "number" }), costBasis: text("cost_basis").default("unknown").notNull(),
   quantity: integer("quantity").notNull(), unitPrice: integer("unit_price").notNull(), unitCost: integer("unit_cost"),
-}, (t) => [index("order_items_order_idx").on(t.orderId), uniqueIndex("order_items_variant_unique").on(t.orderId, t.variantId), check("order_items_valid", sql`${t.quantity} BETWEEN 1 AND 1000000 AND ${t.unitPrice} >= 0 AND (${t.unitCost} IS NULL OR ${t.unitCost} >= 0)`)]);
+}, (t) => [check("order_line_cost_valid",sql`(${t.costTotal} IS NULL OR ${t.costTotal} BETWEEN 0 AND 9007199254740991) AND ${t.costBasis} IN ('unknown','legacy','estimated','weighted_average')`),index("order_items_order_idx").on(t.orderId), uniqueIndex("order_items_variant_unique").on(t.orderId, t.variantId), check("order_items_valid", sql`${t.quantity} BETWEEN 1 AND 1000000 AND ${t.unitPrice} >= 0 AND (${t.unitCost} IS NULL OR ${t.unitCost} >= 0)`)]);
 export const commerceAudit = pgTable("commerce_audit", {
   id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().unique(), actorId: text("actor_id"),
   entityId: uuid("entity_id").notNull(), action: text("action").notNull(), payload: jsonb("payload").notNull(),

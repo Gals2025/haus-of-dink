@@ -60,7 +60,7 @@ export function VariantForm({ productId, productSlug, existingSkus, attributes =
   }
   if (variantId) return <div role="status" className="space-y-3 rounded-xl border bg-card p-5">
     <p>SKU added. Receive stock to record its opening quantity or a delivery.</p>
-    <Link className="inline-block rounded-md bg-primary px-4 py-2 text-primary-foreground" href={`/admin/inventory/adjustments?variantId=${variantId}&type=PURCHASE`}>Receive stock</Link>
+    <Link className="inline-block rounded-md bg-primary px-4 py-2 text-primary-foreground" href={`/admin/inventory/receiving?variantId=${variantId}`}>Receive stock</Link>
     <button type="button" className="ml-4 underline" onClick={() => setVariantId(null)}>Add another SKU</button>
   </div>;
   return <details className="rounded-xl border bg-card p-5"><summary className="cursor-pointer font-medium">{variant ? `Edit ${variant.sku}` : "Add SKU / variant"}</summary>

@@ -7,3 +7,4 @@ export * from "./catalog-audit";
 export * from "./catalog-management-audit";
 export * from "./commerce";
 export * from "./featured";
+export * from "./purchasing";

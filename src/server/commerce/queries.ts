@@ -53,7 +53,8 @@ export function reportQuery(identity: AuthSession, start: string, end: string) {
     coalesce((select sum(discount) from filtered where status='fulfilled'),0)::text as discounts,
     coalesce((select sum(shipping_fee) from filtered where status='fulfilled'),0)::text as shipping,
     coalesce((select sum(total) from filtered where payment_status='paid' and status='pending'),0)::text as deposits,
-    coalesce((select sum(i.unit_cost::bigint*i.quantity) from order_items i join filtered o on o.id=i.order_id where o.status='fulfilled'),0)::text as cost,
-    (select count(*)::int from order_items i join filtered o on o.id=i.order_id where o.status='fulfilled' and i.unit_cost is null) as "missingCost",
+    coalesce((select sum(i.cost_total) from order_items i join filtered o on o.id=i.order_id where o.status='fulfilled'),0)::text as cost,
+    (select count(*)::int from order_items i join filtered o on o.id=i.order_id where o.status='fulfilled' and i.cost_total is null) as "missingCost",
+    (select count(*)::int from order_items i join filtered o on o.id=i.order_id where o.status='fulfilled' and i.cost_basis in ('estimated','legacy')) as "estimatedCost",
     coalesce((select jsonb_agg(d order by d.day) from (select (created_at at time zone 'Asia/Manila')::date::text as day,count(*)::int as orders,sum(total)::text as revenue from filtered where status='fulfilled' group by 1) d),'[]'::jsonb) as daily`;
 }

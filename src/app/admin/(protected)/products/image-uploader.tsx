@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveProductThumbnail } from "./image-actions";
+import { uploadThumbnail } from "./upload-thumbnail";
 import { maxProductImageSize,productImageTypes } from "@/server/catalog/image-contracts";
 
 export function ProductImageUploader({productId,name,variants}:{productId:string;name:string;variants:{id:string;sku:string}[]}) {
@@ -16,13 +16,7 @@ export function ProductImageUploader({productId,name,variants}:{productId:string
     if (!altText.trim()) {setMessage("Add a short image description before uploading.");return;}
     setBusy(true);
     try {
-      const response=await fetch("/api/admin/products/images/upload",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId,variantId:variantId||null,contentType:file.type,size:file.size})});
-      const details=await response.json() as {uploadUrl?:string;imageUrl?:string;error?:string};
-      if (!response.ok||!details.uploadUrl||!details.imageUrl) throw new Error(details.error||"Could not prepare the upload.");
-      const stored=await fetch(details.uploadUrl,{method:"PUT",headers:{"Content-Type":file.type},body:file});
-      if (!stored.ok) throw new Error("The image upload failed. Please choose the file again.");
-      const saved=await saveProductThumbnail({productId,variantId:variantId||null,imageUrl:details.imageUrl,altText:altText.trim()});
-      if (!saved.ok) throw new Error(saved.error);
+      await uploadThumbnail(file,productId,altText,variantId||null);
       setMessage("Thumbnail saved. The POS and storefront will use it; previous images remain in the gallery.");router.refresh();
     } catch(error) {setMessage(error instanceof Error?error.message:"Could not upload the image.");}
     finally {setBusy(false);}
